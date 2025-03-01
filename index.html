@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App with Firebase</title>
+    <script src="https://unpkg.com/htmx.org@1.8.4"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .task { display: flex; justify-content: space-between; padding: 5px 0; }
+        .task button { background: red; color: white; border: none; padding: 5px; cursor: pointer; }
+        input, button { padding: 8px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Todo App with Firebase</h1>
+
+    <!-- Auth Section -->
+    <div id="auth-section">
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button onclick="signup()">Sign Up</button>
+        <button onclick="login()">Login</button>
+    </div>
+
+    <button id="logout-btn" onclick="logout()" style="display:none;">Logout</button>
+
+    <!-- Task Section -->
+    <div id="task-section" style="display:none;">
+        <form id="task-form">
+            <input type="text" id="task-input" placeholder="Enter a task" required>
+            <button type="submit">Add Task</button>
+        </form>
+        <div id="task-list"></div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAXKzZTsBt9LQZz2ah9IBRzWyuSMOeHCF8",
+        authDomain: "htmx-5e52b.firebaseapp.com",
+        projectId: "htmx-5e52b",
+        storageBucket: "htmx-5e52b.firebasestorage.app",
+        messagingSenderId: "955801445157",
+        appId: "1:955801445157:web:60997c1f03452973e9b0cc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth();
+
+    function updateUI(user) {
+        document.getElementById('auth-section').style.display = user ? "none" : "block";
+        document.getElementById('task-section').style.display = user ? "block" : "none";
+        document.getElementById('logout-btn').style.display = user ? "block" : "none";
+        if (user) loadTasks();
+    }
+
+    async function loadTasks() {
+        const taskList = document.getElementById('task-list');
+        taskList.innerHTML = '';
+
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach(doc => {
+            taskList.innerHTML += `
+                <div class="task">
+                    <span>${doc.data().message}</span>
+                    <button hx-on="click: deleteTask('${doc.id}')">Delete</button>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById('task-form').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        const taskInput = document.getElementById('task-input');
+        const message = taskInput.value.trim();
+        const user = auth.currentUser;
+        if (message && user) {
+            await addDoc(collection(db, "tasks"), { message, userId: user.uid });
+            loadTasks();
+            taskInput.value = '';
+        }
+    });
+
+    window.deleteTask = async function(taskId) {
+        await deleteDoc(doc(db, "tasks", taskId));
+        loadTasks();
+    };
+
+    window.signup = async function() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        await createUserWithEmailAndPassword(auth, email, password);
+    };
+
+    window.login = async function() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        await signInWithEmailAndPassword(auth, email, password);
+    };
+
+    window.logout = async function() { await signOut(auth); };
+
+    onAuthStateChanged(auth, updateUI);
+</script>
+</body>
+</html>
+
