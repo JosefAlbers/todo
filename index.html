@@ -3,114 +3,514 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo App with Firebase</title>
-    <script src="https://unpkg.com/htmx.org@1.8.4"></script>
+    <title>Operationalizing Functional Medicine in Primary Care</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- 
+    PALETTE SELECTION: "Vibrant Productivity"
+    Primary: #2563EB (Electric Blue)
+    Secondary: #F59E0B (Energetic Orange)
+    Accent: #14B8A6 (Teal)
+    Highlight: #7C3AED (Rich Purple)
+    Background: #F3F4F6 (Cool Gray)
+    Surface: #FFFFFF (White)
+    -->
+
+    <!--
+    PLAN SUMMARY:
+    1. Header: Hook the user with the shift from acute to root-cause care.
+    2. Workflow Transition: CSS Timeline showing the breakdown of a 60-min intake (Time allocation chart).
+    3. The Advanced Lab Panel: Radar chart comparing Standard Scope vs. FM Scope.
+    4. Lab Reference Ranges: HTML Table contrasting "Normal" vs. "Optimal".
+    5. Nutrient Repletion: Bar chart showing Bioavailability (PO vs IV).
+    6. The 5R Protocol: CSS Flow diagram for Gut Health.
+    7. Conclusion: Operational summary.
+    
+    CHART SELECTION JUSTIFICATION (NO SVG):
+    - Time Allocation -> Doughnut Chart (Chart.js). Goal: Inform/Proportion. Best for showing parts of a whole hour.
+    - Scope of Practice -> Radar Chart (Chart.js). Goal: Compare. Excellent for showing multi-dimensional expansion of care.
+    - Bioavailability -> Grouped Bar Chart (Chart.js). Goal: Compare. Shows the stark difference in absorption rates.
+    - Workflow/Process -> CSS Flexbox/Grid. Goal: Organize. Replaces Mermaid/SVG for diagrams.
+    -->
+
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .task { display: flex; justify-content: space-between; padding: 5px 0; }
-        .task button { background: red; color: white; border: none; padding: 5px; cursor: pointer; }
-        input, button { padding: 8px; margin: 5px 0; }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #F3F4F6;
+            color: #1F2937;
+        }
+
+        /* CHART CONTAINER RULES */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            /* Mobile default */
+            height: 300px;
+            max-height: 400px;
+        }
+
+        /* Tablet and up */
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+                max-width: 100%; /* Allow filling the grid cell */
+            }
+        }
+        
+        /* Specific max-widths for readability based on content type */
+        .chart-wrapper-radar {
+            max-width: 600px; 
+            margin: 0 auto;
+        }
+        
+        .chart-wrapper-bar {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Material Design Cards */
+        .card {
+            background: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Custom Arrow for Flowcharts (CSS Shapes, NO SVG) */
+        .arrow-down {
+            width: 0; 
+            height: 0; 
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid #9CA3AF;
+            margin: 0.5rem auto;
+        }
+        
+        @media (min-width: 768px) {
+            .arrow-right-md {
+                width: 0; 
+                height: 0; 
+                border-top: 10px solid transparent;
+                border-bottom: 10px solid transparent;
+                border-left: 15px solid #9CA3AF;
+                border-right: none;
+                margin: auto 0.5rem;
+            }
+            .arrow-down-md-none {
+                display: none;
+            }
+        }
+
+        .highlight-text {
+            color: #2563EB;
+            font-weight: 700;
+        }
     </style>
 </head>
-<body>
-    <h1>Todo App with Firebase</h1>
+<body class="p-4 md:p-8">
 
-    <!-- Auth Section -->
-    <div id="auth-section">
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button onclick="signup()">Sign Up</button>
-        <button onclick="login()">Login</button>
-    </div>
+    <!-- HEADER -->
+    <header class="max-w-7xl mx-auto mb-10 text-center">
+        <div class="bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-8 rounded-2xl shadow-lg">
+            <h1 class="text-3xl md:text-5xl font-bold mb-4">Operationalizing Functional Medicine</h1>
+            <p class="text-lg md:text-xl font-light opacity-90">Primary Care Integration: Workflows, Advanced Diagnostics, and Therapeutic Protocols.</p>
+        </div>
+    </header>
 
-    <button id="logout-btn" onclick="logout()" style="display:none;">Logout</button>
+    <!-- MAIN GRID -->
+    <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
 
-    <!-- Task Section -->
-    <div id="task-section" style="display:none;">
-        <form id="task-form">
-            <input type="text" id="task-input" placeholder="Enter a task" required>
-            <button type="submit">Add Task</button>
-        </form>
-        <div id="task-list"></div>
-    </div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyAXKzZTsBt9LQZz2ah9IBRzWyuSMOeHCF8",
-        authDomain: "htmx-5e52b.firebaseapp.com",
-        projectId: "htmx-5e52b",
-        storageBucket: "htmx-5e52b.firebasestorage.app",
-        messagingSenderId: "955801445157",
-        appId: "1:955801445157:web:60997c1f03452973e9b0cc"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth();
-
-    function updateUI(user) {
-        document.getElementById('auth-section').style.display = user ? "none" : "block";
-        document.getElementById('task-section').style.display = user ? "block" : "none";
-        document.getElementById('logout-btn').style.display = user ? "block" : "none";
-        if (user) loadTasks();
-    }
-
-    async function loadTasks() {
-        const taskList = document.getElementById('task-list');
-        taskList.innerHTML = '';
-
-        const user = auth.currentUser;
-        if (!user) return;
-
-        const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach(doc => {
-            taskList.innerHTML += `
-                <div class="task">
-                    <span>${doc.data().message}</span>
-                    <button hx-on="click: deleteTask('${doc.id}')">Delete</button>
+        <!-- SECTION 1: THE INTAKE SHIFT -->
+        <section class="col-span-1 md:col-span-2">
+            <div class="card bg-white">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-blue-600 pl-4">1. The Clinical Workflow Shift</h2>
+                <p class="mb-6 text-gray-600">Transitioning from standard volume-based care to value-based functional medicine requires re-allocating time. The "15-minute door-knob visit" is replaced by a comprehensive 60-minute intake focused on timeline history and antecedents.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <div class="col-span-1">
+                         <div class="chart-container" style="height: 300px;">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                        <p class="text-center text-sm text-gray-500 mt-2">Figure 1: Initial Consult Time Allocation</p>
+                    </div>
+                    <div class="col-span-1 md:col-span-2 grid grid-cols-1 gap-4">
+                        <!-- Step 1 -->
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">1</div>
+                            <div class="ml-4">
+                                <h3 class="font-bold text-lg">Pre-Visit Data Harvesting</h3>
+                                <p class="text-sm text-gray-600">Patient completes a 3-day diet diary and extensive MSQ (Medical Symptoms Questionnaire) <i>before</i> arrival. This saves 20 mins of consult time.</p>
+                            </div>
+                        </div>
+                        <!-- Step 2 -->
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">2</div>
+                            <div class="ml-4">
+                                <h3 class="font-bold text-lg">The "Matrix" Analysis</h3>
+                                <p class="text-sm text-gray-600">Clinician maps symptoms to systems (e.g., Gut-Brain axis) rather than ICD-10 codes alone. Focus on triggers (toxins, stress, microbes).</p>
+                            </div>
+                        </div>
+                        <!-- Step 3 -->
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-bold">3</div>
+                            <div class="ml-4">
+                                <h3 class="font-bold text-lg">Diagnostic Ordering</h3>
+                                <p class="text-sm text-gray-600">Order comprehensive panels immediately. Do not wait for "failed conservative therapy."</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            `;
-        });
-    }
+            </div>
+        </section>
 
-    document.getElementById('task-form').addEventListener('submit', async function(event) {
-        event.preventDefault();
-        const taskInput = document.getElementById('task-input');
-        const message = taskInput.value.trim();
-        const user = auth.currentUser;
-        if (message && user) {
-            await addDoc(collection(db, "tasks"), { message, userId: user.uid });
-            loadTasks();
-            taskInput.value = '';
+        <!-- SECTION 2: SCOPE OF DIAGNOSTICS -->
+        <section class="col-span-1 md:col-span-1">
+            <div class="card h-full">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-purple-600 pl-4">2. The Diagnostic Scope</h2>
+                <p class="mb-4 text-gray-600">Functional medicine expands the "Keyhole" view of standard primary care into a panoramic assessment. We move beyond pathology detection to function optimization.</p>
+                <div class="chart-container chart-wrapper-radar">
+                    <canvas id="scopeChart"></canvas>
+                </div>
+                <div class="mt-4 text-sm text-gray-500">
+                    <p><strong>Standard Care:</strong> High focus on acute pathology and symptom management.</p>
+                    <p><strong>Functional Care:</strong> High focus on metabolic analysis, microbiome health, and micronutrient status.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: KEY LAB MARKERS -->
+        <section class="col-span-1 md:col-span-1">
+            <div class="card h-full">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-teal-500 pl-4">3. Critical Lab Panels & Ranges</h2>
+                <p class="mb-4 text-gray-600">Do not rely on standard reference ranges, which are statistical averages of a sick population. Aim for <strong>Optimal Functional Ranges</strong>.</p>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm text-left text-gray-600">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-2">Marker</th>
+                                <th class="px-4 py-2">Standard Ref</th>
+                                <th class="px-4 py-2 text-blue-600">Optimal Target</th>
+                                <th class="px-4 py-2">Clinical Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white border-b">
+                                <td class="px-4 py-2 font-medium text-gray-900">TSH</td>
+                                <td class="px-4 py-2">0.4 - 4.5</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">1.0 - 2.0</td>
+                                <td class="px-4 py-2">Check TPO/TgAb if > 2.5</td>
+                            </tr>
+                            <tr class="bg-gray-50 border-b">
+                                <td class="px-4 py-2 font-medium text-gray-900">Vit D (25-OH)</td>
+                                <td class="px-4 py-2">30 - 100</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">50 - 70</td>
+                                <td class="px-4 py-2">Immune modulation</td>
+                            </tr>
+                            <tr class="bg-white border-b">
+                                <td class="px-4 py-2 font-medium text-gray-900">Ferritin</td>
+                                <td class="px-4 py-2">15 - 150</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">50 - 100</td>
+                                <td class="px-4 py-2">Hair loss/Fatigue link</td>
+                            </tr>
+                            <tr class="bg-gray-50 border-b">
+                                <td class="px-4 py-2 font-medium text-gray-900">HbA1c</td>
+                                <td class="px-4 py-2">< 5.7%</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">< 5.2%</td>
+                                <td class="px-4 py-2">Insulin resistance start</td>
+                            </tr>
+                            <tr class="bg-white border-b">
+                                <td class="px-4 py-2 font-medium text-gray-900">hs-CRP</td>
+                                <td class="px-4 py-2">< 3.0</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">< 0.9</td>
+                                <td class="px-4 py-2">Systemic inflammation</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-4 py-2 font-medium text-gray-900">Homocysteine</td>
+                                <td class="px-4 py-2">< 15</td>
+                                <td class="px-4 py-2 text-blue-600 font-bold">6 - 8</td>
+                                <td class="px-4 py-2">Methylation status (B12/Folate)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4 p-3 bg-blue-50 rounded text-sm text-blue-800">
+                    <strong>Pro Tip:</strong> Add a <i>Fasting Insulin</i> to every metabolic panel. Glucose is a lagging indicator; Insulin is a leading indicator.
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: NUTRIENT REPLETION -->
+        <section class="col-span-1 md:col-span-2">
+            <div class="card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-l-4 border-orange-500 pl-4">4. Therapeutic Repletion: PO vs. IV</h2>
+                <p class="mb-6 text-gray-600">Addressing micronutrient deficits is a cornerstone of FM. In compromised guts (leaky gut, SIBO), oral absorption is poor. IV Therapy bridges the gap for immediate cellular saturation.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Chart Side -->
+                    <div>
+                        <div class="chart-container chart-wrapper-bar">
+                            <canvas id="bioavailabilityChart"></canvas>
+                        </div>
+                        <p class="text-center text-sm text-gray-500 mt-2">Figure 3: Estimated Serum Bioavailability (%)</p>
+                    </div>
+
+                    <!-- Protocols Side -->
+                    <div class="flex flex-col justify-center space-y-4">
+                        <h3 class="font-bold text-lg text-gray-800">Common "Myers' Cocktail" Base Protocols</h3>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-500">
+                            <h4 class="font-bold text-blue-700">Magnesium (The Relaxer)</h4>
+                            <p class="text-sm"><strong>PO:</strong> Mag Glycinate 400mg HS (Best absorption, least GI upset).</p>
+                            <p class="text-sm"><strong>IV:</strong> 1-2g Magnesium Chloride. Instant effect for migraines/asthma.</p>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-orange-500">
+                            <h4 class="font-bold text-orange-700">Vitamin C (The Oxidative Shield)</h4>
+                            <p class="text-sm"><strong>PO:</strong> Liposomal C 1-2g. (Bowel tolerance limits standard ascorbic acid).</p>
+                            <p class="text-sm"><strong>IV:</strong> 5g - 25g. High dose acts as pro-oxidant (antimicrobial/cancer adjunctive).</p>
+                        </div>
+
+                        <div class="bg-gray-50 p-4 rounded-lg border-l-4 border-teal-500">
+                            <h4 class="font-bold text-teal-700">B12 & Methylation</h4>
+                            <p class="text-sm"><strong>PO:</strong> Methylcobalamin (SL) 1000mcg. Avoid Cyanocobalamin.</p>
+                            <p class="text-sm"><strong>IM/IV:</strong> 1000mcg - 5000mcg. Critical for fatigue/neuropathy.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: THE 5R PROTOCOL -->
+        <section class="col-span-1 md:col-span-2">
+            <div class="card bg-gradient-to-br from-white to-blue-50">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-blue-700 pl-4">5. The "5R" Protocol: Gut Restoration</h2>
+                <p class="mb-8 text-gray-600 max-w-3xl">The gut is the center of the functional immune system. For patients with IBS, Autoimmunity, or Brain Fog, utilize this sequential framework.</p>
+
+                <!-- Flowchart Container -->
+                <div class="flex flex-col md:flex-row justify-between items-stretch gap-4">
+                    
+                    <!-- R1 -->
+                    <div class="flex-1 bg-white p-4 rounded-lg shadow border-t-4 border-red-500 flex flex-col items-center text-center">
+                        <div class="text-3xl mb-2">🗑️</div>
+                        <h3 class="font-bold text-gray-800">1. REMOVE</h3>
+                        <p class="text-xs text-gray-500 mt-2">Elimination Diet (Gluten/Dairy).</p>
+                        <p class="text-xs text-gray-500">Treat Infections (SIBO/Candida).</p>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="arrow-down md:arrow-down-none md:arrow-right-md"></div>
+
+                    <!-- R2 -->
+                    <div class="flex-1 bg-white p-4 rounded-lg shadow border-t-4 border-orange-500 flex flex-col items-center text-center">
+                        <div class="text-3xl mb-2">🧪</div>
+                        <h3 class="font-bold text-gray-800">2. REPLACE</h3>
+                        <p class="text-xs text-gray-500 mt-2">Digestive Enzymes (Lipase/Amylase).</p>
+                        <p class="text-xs text-gray-500">Betaine HCL (Stomach Acid).</p>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="arrow-down md:arrow-down-none md:arrow-right-md"></div>
+
+                    <!-- R3 -->
+                    <div class="flex-1 bg-white p-4 rounded-lg shadow border-t-4 border-green-500 flex flex-col items-center text-center">
+                        <div class="text-3xl mb-2">🦠</div>
+                        <h3 class="font-bold text-gray-800">3. REINOCULATE</h3>
+                        <p class="text-xs text-gray-500 mt-2">Probiotics (Lacto/Bifido).</p>
+                        <p class="text-xs text-gray-500">Prebiotics (Inulin, Fiber).</p>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="arrow-down md:arrow-down-none md:arrow-right-md"></div>
+
+                    <!-- R4 -->
+                    <div class="flex-1 bg-white p-4 rounded-lg shadow border-t-4 border-blue-500 flex flex-col items-center text-center">
+                        <div class="text-3xl mb-2">🧱</div>
+                        <h3 class="font-bold text-gray-800">4. REPAIR</h3>
+                        <p class="text-xs text-gray-500 mt-2">L-Glutamine (Enterocyte fuel).</p>
+                        <p class="text-xs text-gray-500">Zinc Carnosine. Bone Broth.</p>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="arrow-down md:arrow-down-none md:arrow-right-md"></div>
+
+                    <!-- R5 -->
+                    <div class="flex-1 bg-white p-4 rounded-lg shadow border-t-4 border-purple-500 flex flex-col items-center text-center">
+                        <div class="text-3xl mb-2">🧘</div>
+                        <h3 class="font-bold text-gray-800">5. REBALANCE</h3>
+                        <p class="text-xs text-gray-500 mt-2">Stress Management.</p>
+                        <p class="text-xs text-gray-500">Sleep Hygiene. Vagus Nerve work.</p>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="max-w-7xl mx-auto mt-12 mb-8 text-center text-gray-500 text-sm">
+        <p>&copy; J Joe</p>
+    </footer>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- UTILITY: Label Wrapping for Chart.js ---
+        function splitLabel(str, maxLen = 16) {
+            if (str.length <= maxLen) return str;
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+                if (currentLine.length + 1 + words[i].length <= maxLen) {
+                    currentLine += ' ' + words[i];
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            lines.push(currentLine);
+            return lines;
         }
-    });
 
-    window.deleteTask = async function(taskId) {
-        await deleteDoc(doc(db, "tasks", taskId));
-        loadTasks();
-    };
+        // --- SHARED CONFIG: Tooltip Title Callback ---
+        const sharedTooltipOptions = {
+            callbacks: {
+                title: function(tooltipItems) {
+                    const item = tooltipItems[0];
+                    let label = item.chart.data.labels[item.dataIndex];
+                    if (Array.isArray(label)) {
+                        return label.join(' ');
+                    } else {
+                        return label;
+                    }
+                }
+            }
+        };
 
-    window.signup = async function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        await createUserWithEmailAndPassword(auth, email, password);
-    };
+        // --- CHART 1: Time Allocation (Doughnut) ---
+        const ctxTime = document.getElementById('timeChart').getContext('2d');
+        new Chart(ctxTime, {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    'Detailed History & Timeline', 
+                    'Physical Exam', 
+                    'Patient Education', 
+                    'Therapeutic Plan Formulation'
+                ].map(l => splitLabel(l, 16)),
+                datasets: [{
+                    data: [40, 15, 25, 20],
+                    backgroundColor: ['#2563EB', '#F59E0B', '#14B8A6', '#7C3AED'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: sharedTooltipOptions
+                }
+            }
+        });
 
-    window.login = async function() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        await signInWithEmailAndPassword(auth, email, password);
-    };
+        // --- CHART 2: Diagnostic Scope (Radar) ---
+        const ctxScope = document.getElementById('scopeChart').getContext('2d');
+        new Chart(ctxScope, {
+            type: 'radar',
+            data: {
+                labels: [
+                    'Acute Infection', 
+                    'Nutrient Status', 
+                    'Gut Microbiome', 
+                    'Hormone Metabolites', 
+                    'Environmental Toxins', 
+                    'Genomics'
+                ].map(l => splitLabel(l, 12)),
+                datasets: [
+                    {
+                        label: 'Standard Primary Care',
+                        data: [90, 20, 10, 30, 10, 5],
+                        fill: true,
+                        backgroundColor: 'rgba(156, 163, 175, 0.2)',
+                        borderColor: '#9CA3AF',
+                        pointBackgroundColor: '#9CA3AF',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#9CA3AF'
+                    },
+                    {
+                        label: 'Functional Medicine',
+                        data: [70, 90, 95, 85, 70, 60],
+                        fill: true,
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: '#2563EB',
+                        pointBackgroundColor: '#2563EB',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#2563EB'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                },
+                plugins: {
+                    tooltip: sharedTooltipOptions
+                }
+            }
+        });
 
-    window.logout = async function() { await signOut(auth); };
+        // --- CHART 3: Bioavailability (Bar) ---
+        const ctxBio = document.getElementById('bioavailabilityChart').getContext('2d');
+        new Chart(ctxBio, {
+            type: 'bar',
+            data: {
+                labels: ['Magnesium', 'Vitamin C', 'Glutathione', 'B12 Complex'],
+                datasets: [
+                    {
+                        label: 'Oral Absorption (Compromised Gut)',
+                        data: [30, 18, 5, 10],
+                        backgroundColor: '#F59E0B'
+                    },
+                    {
+                        label: 'IV/IM Bioavailability',
+                        data: [100, 100, 100, 100],
+                        backgroundColor: '#2563EB'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: '% Absorption' }
+                    }
+                },
+                plugins: {
+                    tooltip: sharedTooltipOptions
+                }
+            }
+        });
 
-    onAuthStateChanged(auth, updateUI);
-</script>
+    </script>
 </body>
 </html>
-
