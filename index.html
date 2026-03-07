@@ -1,377 +1,1081 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimalist Dark Todo</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <style>
-        :root {
-            --bg-color: #1e1e1e;
-            --card-bg: #2d2d2d;
-            --text-main: #e0e0e0;
-            --text-muted: #888;
-            --accent: #4caf50;
-            --danger: #ff5252;
-            --highlight: #3c3c3c;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[ NieR : Automata ] — YoRHa Operating System</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&family=Josefin+Sans:wght@100;300;400&display=swap" rel="stylesheet">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
 
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-main);
-            display: flex; justify-content: center; 
-            margin: 0; padding: 40px 20px;
-        }
+const firebaseConfig = {
+  apiKey:            "AIzaSyDieb4QLU1m25hBsSHuursSiAgYUZ6IF8U",
+  authDomain:        "yorha-c18b2.firebaseapp.com",
+  projectId:         "yorha-c18b2",
+  storageBucket:     "yorha-c18b2.firebasestorage.app",
+  messagingSenderId: "308398016062",
+  appId:             "1:308398016062:web:ce8e32080c35dd7701336f",
+  measurementId:     "G-SM6B5QB8YH"
+};
 
-        .container { width: 100%; max-width: 600px; }
+const fbApp  = initializeApp(firebaseConfig);
+const fbAuth = getAuth(fbApp);
+const fbDb   = getFirestore(fbApp);
+const analytics = getAnalytics(fbApp);
 
-        /* --- Auth Section --- */
-        #auth-section { text-align: center; margin-top: 100px;}
-        input {
-            background: var(--card-bg); border: 1px solid #444; color: white;
-            padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box;
-            margin-bottom: 10px; outline: none; transition: border 0.2s;
-        }
-        input:focus { border-color: var(--text-muted); }
-        
-        .btn {
-            background: var(--highlight); color: white; border: none;
-            padding: 10px 20px; border-radius: 6px; cursor: pointer;
-            font-size: 0.9rem; transition: background 0.2s;
-        }
-        .btn:hover { background: #555; }
-        .btn-primary { background: var(--accent); color: #000; font-weight: bold; }
-        .btn-primary:hover { opacity: 0.9; background: var(--accent); }
+window._fbAuth = fbAuth;
+window._fbDb   = fbDb;
+window._fbFns  = {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  doc,
+  setDoc,
+  getDoc
+};
 
-        /* --- Header & Input --- */
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        h1 { font-size: 1.5rem; margin: 0; font-weight: 300; letter-spacing: 1px; }
-        .logout-link { color: var(--text-muted); font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+onAuthStateChanged(fbAuth, user => {
+  window._fbUser = user || null;
+  if (typeof window.updateSystemPanel === 'function') window.updateSystemPanel();
+});
+</script>
+<style>
+:root {
+  --bg:        #d4cdb8;
+  --bg-light:  #ddd7c4;
+  --bg-dark:   #c4bcaa;
+  --panel:     #cdc6b2;
+  --dark:      #2a2520;
+  --dark2:     #3a342e;
+  --mid:       #6a6050;
+  --text:      #2a2520;
+  --text-dim:  #7a7060;
+  --text-faint:#a09880;
+  --sel-bg:    #3a342e;
+  --sel-text:  #d4cdb8;
+  --accent:    #8a7a5a;
+  --border:    #b0a890;
+  --border-dark:#7a7060;
+  --red:       #6a2a1a;
+  --green:     #3a5a2a;
+  --dot:       rgba(42,37,32,0.25);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 300;
+  height: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+body {
+  background-image:
+    linear-gradient(rgba(42,37,32,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42,37,32,0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-color: var(--bg);
+}
+.dots {
+  height: 8px;
+  background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px);
+  background-size: 8px 8px;
+  flex-shrink: 0;
+}
+/* BOOT */
+#boot {
+  position: fixed; inset: 0;
+  background: var(--dark);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 10000; gap: 12px;
+}
+#boot.hidden { display: none; }
+.boot-title { font-family: 'Josefin Sans', sans-serif; font-weight: 100; font-size: 36px; letter-spacing: 20px; color: var(--bg); text-transform: uppercase; }
+.boot-bracket { font-family: 'Share Tech Mono', monospace; font-size: 20px; letter-spacing: 8px; color: var(--bg-dark); }
+.boot-sub { font-size: 10px; letter-spacing: 6px; color: var(--mid); text-transform: uppercase; margin-top: 4px; }
+.boot-log { margin-top: 28px; width: 420px; font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--mid); line-height: 2; letter-spacing: 0.05em; }
+.boot-log span { display: block; opacity: 0; }
+.boot-log span.show { opacity: 1; }
+.boot-bar-outer { width: 420px; height: 1px; background: var(--dark2); margin-top: 16px; }
+.boot-bar { height: 100%; background: var(--bg-dark); width: 0; transition: width 0.1s; }
+#app { display: flex; flex-direction: column; height: 100vh; opacity: 0; transition: opacity 0.5s; }
+#app.visible { opacity: 1; }
+#topnav {
+  background: var(--dark);
+  display: flex; align-items: stretch;
+  height: 36px; flex-shrink: 0;
+  border-bottom: 2px solid var(--dark2);
+}
+.nav-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 18px;
+  font-size: 10px; letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(212,205,184,0.5);
+  cursor: pointer;
+  border-right: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.15s;
+  white-space: nowrap; font-weight: 400;
+}
+.nav-tab:hover { color: rgba(212,205,184,0.85); }
+.nav-tab.active { color: var(--bg-light); background: rgba(255,255,255,0.06); border-bottom: 2px solid var(--bg-light); margin-bottom: -2px; }
+.nav-icon { width: 10px; height: 10px; border: 1px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 7px; flex-shrink: 0; }
+.panel-titlebar { padding: 20px 24px 4px; flex-shrink: 0; }
+.panel-big-title { font-family: 'Josefin Sans', sans-serif; font-weight: 100; font-size: 28px; letter-spacing: 8px; color: var(--text); text-transform: uppercase; display: inline; }
+.panel-big-sub { font-size: 11px; letter-spacing: 3px; color: var(--text-dim); margin-left: 8px; text-transform: uppercase; }
+.title-dotted-line { border: none; border-bottom: 1px dotted var(--border-dark); margin: 8px 0 0; }
+#statusbar { background: var(--dark); height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; border-top: 1px solid var(--dark2); }
+.sb-hint { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(212,205,184,0.5); letter-spacing: 1px; }
+.sb-controls { display: flex; gap: 16px; }
+.sb-ctrl { font-size: 9px; letter-spacing: 2px; color: rgba(212,205,184,0.4); display: flex; align-items: center; gap: 4px; }
+.sb-btn { background: rgba(212,205,184,0.2); color: var(--bg-light); font-size: 8px; padding: 1px 4px; }
+#content { flex: 1; overflow: hidden; position: relative; }
+.panel { position: absolute; inset: 0; display: none; flex-direction: column; }
+.panel.active { display: flex; animation: pfade 0.2s ease; }
+@keyframes pfade { from { opacity:0; } to { opacity:1; } }
+.two-col { display: flex; flex: 1; overflow: hidden; }
+.col-left { width: 240px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.col-right { flex: 1; display: flex; overflow: hidden; }
+.col-scroll { flex: 1; overflow-y: auto; padding: 6px 0; }
+.col-scroll::-webkit-scrollbar { width: 3px; }
+.col-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+.list-item { display: flex; align-items: center; gap: 8px; padding: 6px 16px; cursor: pointer; font-size: 12px; letter-spacing: 0.5px; color: var(--text-dim); transition: all 0.1s; border-left: 2px solid transparent; }
+.list-item:hover { color: var(--text); background: rgba(42,37,32,0.06); }
+.list-item.selected { background: var(--sel-bg); color: var(--sel-text); border-left-color: var(--sel-text); }
+.li-icon { width: 8px; height: 8px; border: 1px solid var(--text-faint); flex-shrink: 0; }
+.li-icon.filled { background: var(--text-faint); }
+.li-icon.sel { background: var(--sel-text); border-color: var(--sel-text); }
+.status-panel { width: 190px; flex-shrink: 0; border-left: 1px solid var(--border); padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+.sp-box { border: 1px solid var(--border); background: rgba(42,37,32,0.05); }
+.sp-title { background: var(--dark); color: var(--bg-light); font-size: 9px; letter-spacing: 3px; padding: 4px 8px; text-transform: uppercase; display: flex; justify-content: space-between; }
+.sp-row { padding: 4px 8px; font-size: 10px; letter-spacing: 0.5px; color: var(--text-dim); display: flex; justify-content: space-between; border-bottom: 1px solid rgba(176,168,144,0.3); }
+.sp-row:last-child { border-bottom: none; }
+.sp-row span { color: var(--text); }
+.stat-bar-wrap { padding: 4px 8px 8px; }
+.stat-bar-label { font-size: 9px; letter-spacing: 2px; color: var(--text-faint); margin-bottom: 4px; }
+.stat-bar { height: 3px; background: var(--border); }
+.stat-bar-fill { height: 100%; background: var(--dark2); transition: width 0.3s; }
+.prog-bar { height: 2px; background: var(--border); margin: 2px 0 6px; }
+.prog-fill { height: 100%; background: var(--dark2); transition: width 0.3s; }
+.right-main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.right-main::-webkit-scrollbar { width: 3px; }
+.right-main::-webkit-scrollbar-thumb { background: var(--border); }
+.btn { padding: 5px 14px; font-family: 'Josefin Sans', sans-serif; font-weight: 300; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; background: transparent; border: 1px solid var(--border-dark); color: var(--text-dim); cursor: pointer; transition: all 0.15s; }
+.btn:hover { background: var(--dark); color: var(--bg-light); border-color: var(--dark); }
+.btn.primary { background: var(--dark); color: var(--bg-light); border-color: var(--dark); }
+.btn.primary:hover { background: var(--dark2); }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: var(--red); color: var(--bg-light); }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.f-input { width: 100%; background: rgba(42,37,32,0.06); border: 1px solid var(--border); border-bottom-color: var(--border-dark); color: var(--text); font-family: 'Josefin Sans', sans-serif; font-size: 12px; letter-spacing: 0.5px; padding: 6px 10px; outline: none; margin-bottom: 8px; }
+.f-input:focus { border-color: var(--dark); background: rgba(255,255,255,0.3); }
+.f-input::placeholder { color: var(--text-faint); }
+.f-select { background: rgba(42,37,32,0.06); border: 1px solid var(--border); color: var(--text-dim); font-family: 'Josefin Sans', sans-serif; font-size: 11px; letter-spacing: 0.5px; padding: 5px 8px; outline: none; cursor: pointer; }
+.f-select option { background: var(--bg); }
+.f-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+.f-row .f-input { margin-bottom: 0; }
+.f-textarea { width: 100%; background: rgba(42,37,32,0.06); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 1.8; padding: 8px 10px; outline: none; resize: vertical; min-height: 80px; margin-bottom: 8px; }
+.f-label { font-size: 9px; letter-spacing: 3px; color: var(--text-faint); text-transform: uppercase; margin-bottom: 4px; display: block; }
+.add-form-wrap { border-bottom: 1px solid var(--border-dark); padding: 14px 16px; background: rgba(255,255,255,0.2); display: none; flex-shrink: 0; }
+.add-form-wrap.open { display: block; }
+.filter-bar { display: flex; border-bottom: 1px solid var(--border); background: rgba(42,37,32,0.04); flex-shrink: 0; }
+.filter-btn { padding: 6px 16px; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-faint); cursor: pointer; border-right: 1px solid var(--border); transition: all 0.1s; white-space: nowrap; }
+.filter-btn:hover { color: var(--text); background: rgba(42,37,32,0.06); }
+.filter-btn.active { background: var(--dark); color: var(--bg-light); }
+.quest-detail-top { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+.quest-detail-title { font-size: 15px; letter-spacing: 3px; color: var(--text); text-transform: uppercase; margin-bottom: 4px; }
+.quest-detail-desc { font-size: 11px; color: var(--text-dim); line-height: 1.8; margin-top: 8px; font-family: 'Share Tech Mono', monospace; }
+.subquest-section { padding: 12px 20px; }
+.sub-title { font-size: 9px; letter-spacing: 3px; color: var(--text-faint); text-transform: uppercase; margin-bottom: 8px; }
+.sub-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--border); cursor: pointer; }
+.sub-item:last-child { border-bottom: none; }
+.sub-check { width: 10px; height: 10px; border: 1px solid var(--border-dark); flex-shrink: 0; font-size: 7px; display: flex; align-items: center; justify-content: center; color: var(--text); }
+.sub-check.done { background: var(--dark2); border-color: var(--dark2); color: var(--bg-light); }
+.sub-text { font-size: 11px; color: var(--text); letter-spacing: 0.5px; }
+.sub-item.done .sub-text { color: var(--text-faint); text-decoration: line-through; }
+.q-stag { font-size: 8px; letter-spacing: 2px; padding: 1px 5px; text-transform: uppercase; border: 1px solid; }
+.st-active { border-color: var(--text-dim); color: var(--text); }
+.st-pending { border-color: var(--border-dark); color: var(--text-faint); }
+.st-complete { border-color: var(--green); color: var(--green); }
+.st-failed { border-color: var(--red); color: var(--red); }
+.st-abandoned { border-color: var(--border); color: var(--text-faint); opacity: 0.5; }
+.log-detail-header { padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+.log-detail-title { font-size: 14px; letter-spacing: 3px; color: var(--text); text-transform: uppercase; }
+.log-detail-meta { font-size: 9px; letter-spacing: 2px; color: var(--text-faint); margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.log-detail-body { padding: 14px 20px; font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 2; color: var(--text-dim); white-space: pre-wrap; }
+.log-detail-body.corrupted { animation: corrupt 4s infinite; opacity: 0.75; }
+@keyframes corrupt { 0%,97%,100%{transform:none;filter:none;} 98%{transform:translateX(2px) skewX(-1deg);filter:hue-rotate(15deg);} }
+.log-tags { padding: 0 20px 12px; display: flex; gap: 4px; flex-wrap: wrap; }
+.log-tag-pill { font-size: 8px; letter-spacing: 1px; padding: 1px 6px; border: 1px solid var(--border); color: var(--text-faint); text-transform: uppercase; }
+.lc-badge { font-size: 8px; letter-spacing: 2px; padding: 1px 5px; border: 1px solid; text-transform: uppercase; }
+.lc-standard { border-color: var(--border-dark); color: var(--text-faint); }
+.lc-classified { border-color: var(--red); color: var(--red); }
+.lc-corrupted { border-color: var(--mid); color: var(--mid); }
+.inv-detail-top { display: flex; gap: 20px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.inv-icon-box { width: 80px; height: 80px; border: 1px solid var(--border); background: rgba(42,37,32,0.08); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; filter: grayscale(0.3) sepia(0.3); }
+.inv-detail-name { font-size: 16px; letter-spacing: 4px; color: var(--text); text-transform: uppercase; margin-bottom: 4px; }
+.inv-detail-type { font-size: 9px; letter-spacing: 3px; color: var(--text-faint); text-transform: uppercase; }
+.inv-detail-body { padding: 14px 20px; font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 2; color: var(--text-dim); white-space: pre-wrap; }
+#map-canvas { flex: 1; position: relative; overflow: hidden; }
+#map-svg { width: 100%; height: 100%; }
+.terminal-outer { flex: 1; background: var(--dark); display: flex; flex-direction: column; overflow: hidden; }
+#terminal-output { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: 'Share Tech Mono', monospace; font-size: 12px; line-height: 2; color: rgba(212,205,184,0.7); }
+#terminal-output::-webkit-scrollbar { width: 3px; }
+.t-line { display: block; }
+.t-pc { color: var(--bg-light); }
+.t-dim { color: rgba(212,205,184,0.4); }
+.t-err { color: #aa4433; }
+.t-ok { color: #6a9a5a; }
+.t-info { color: #7a9aaa; }
+#terminal-input-row { display: flex; align-items: center; padding: 6px 18px; border-top: 1px solid rgba(255,255,255,0.07); gap: 8px; background: rgba(0,0,0,0.2); }
+.t-ps1 { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: var(--bg-light); white-space: nowrap; }
+#terminal-input { flex: 1; background: transparent; border: none; color: rgba(212,205,184,0.9); font-family: 'Share Tech Mono', monospace; font-size: 12px; outline: none; caret-color: var(--bg-light); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(30,27,22,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
+.modal-overlay.open { display: flex; }
+.confirm-box { border: 1px solid var(--border-dark); background: var(--bg); padding: 24px 32px; text-align: center; min-width: 300px; }
+.confirm-title { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: var(--text); margin-bottom: 6px; }
+.confirm-sub { font-size: 10px; letter-spacing: 1px; color: var(--text-faint); margin-bottom: 18px; }
+.confirm-line { border: none; border-top: 1px dotted var(--border-dark); margin-bottom: 16px; }
+.empty-state { padding: 40px 20px; text-align: center; font-size: 11px; letter-spacing: 2px; color: var(--text-faint); text-transform: uppercase; }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 
-        /* --- Task List --- */
-        #task-list { list-style: none; padding: 0; margin: 0; }
-        
-        .task-item {
-            background: var(--card-bg);
-            margin-bottom: 8px;
-            padding: 15px;
-            border-radius: 8px;
-            display: flex; align-items: center;
-            transition: transform 0.1s, background 0.2s;
-        }
-        .task-item:hover { background: #333; }
-        
-        /* Priority Dot */
-        .priority-dot {
-            width: 10px; height: 10px; border-radius: 50%;
-            margin-right: 15px; cursor: pointer;
-            flex-shrink: 0;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
-        }
-        .p-low { background: #555; }
-        .p-med { background: #2196F3; }
-        .p-high { background: #ff5252; }
-
-        /* Task Text (Truncated) */
-        .task-text { 
-            flex-grow: 1; 
-            cursor: pointer; 
-            font-size: 1rem;
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis;
-            margin-right: 10px;
-        }
-        .task-text.done { text-decoration: line-through; color: var(--text-muted); }
-
-        /* Edit Textarea (Expands when double clicked) */
-        .edit-input { 
-            background: #252525; 
-            border: 1px solid var(--accent);
-            color: white; font-family: inherit; font-size: 1rem;
-            padding: 8px; width: 100%; resize: none; 
-            border-radius: 4px; display: block; overflow: hidden;
-        }
-
-        /* Date Styling (Shows on hover) */
-        .task-date {
-            font-size: 0.75rem; color: var(--text-muted);
-            margin-right: 15px; opacity: 0; transition: opacity 0.2s;
-            white-space: nowrap;
-        }
-        .task-item:hover .task-date { opacity: 1; }
-
-        /* Delete Icon */
-        .delete-btn {
-            color: var(--text-muted); cursor: pointer; opacity: 0; 
-            transition: opacity 0.2s, color 0.2s; padding: 5px;
-        }
-        .task-item:hover .delete-btn { opacity: 1; }
-        .delete-btn:hover { color: var(--danger); }
-
-        /* --- Toast Notification --- */
-        #toast {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: #333; color: white; padding: 12px 24px; border-radius: 50px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            display: flex; align-items: center; gap: 15px;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-            z-index: 1000;
-        }
-        #toast.show { opacity: 1; pointer-events: auto; }
-        #undo-btn { color: var(--accent); cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.8rem;}
-
-    </style>
+.sys-layout {
+  flex: 1; display: flex; overflow: hidden;
+}
+.sys-left {
+  flex: 1; padding: 28px 32px; overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+.sys-right {
+  width: 280px; flex-shrink: 0;
+  padding: 20px 18px;
+  display: flex; flex-direction: column; gap: 14px;
+  overflow-y: auto;
+}
+.sys-clock {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 52px; font-weight: 100;
+  letter-spacing: 6px; color: var(--text);
+  line-height: 1; margin-bottom: 4px;
+}
+.sys-date {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; letter-spacing: 6px;
+  color: var(--text-dim); margin-bottom: 20px;
+}
+.sys-title-big {
+  font-family: 'Josefin Sans', sans-serif;
+  font-weight: 100; font-size: 22px;
+  letter-spacing: 12px; color: var(--text);
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.sys-title-sub {
+  font-size: 9px; letter-spacing: 4px;
+  color: var(--text-faint); text-transform: uppercase;
+  margin-bottom: 28px;
+}
+.sys-section-label {
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--text-faint); text-transform: uppercase;
+  margin-bottom: 10px; padding-bottom: 4px;
+  border-bottom: 1px dotted var(--border-dark);
+}
+.sys-login-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px;
+}
+.sys-login-indicator {
+  width: 8px; height: 8px;
+  border: 1px solid var(--border-dark); flex-shrink: 0;
+}
+.sys-login-indicator.active {
+  background: var(--dark2); border-color: var(--dark2);
+}
+.sys-input {
+  width: 100%;
+  background: rgba(42,37,32,0.08);
+  border: none;
+  border-bottom: 1px solid var(--border-dark);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; letter-spacing: 1px;
+  padding: 6px 8px; outline: none;
+  margin-bottom: 8px;
+}
+.sys-input:focus { border-bottom-color: var(--dark); background: rgba(255,255,255,0.25); }
+.sys-input::placeholder { color: var(--text-faint); }
+.sys-btn-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.sys-status-msg {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  color: var(--text-faint);
+  min-height: 18px; margin-top: 8px;
+  padding: 4px 0;
+}
+.sys-status-msg.ok  { color: var(--green); }
+.sys-status-msg.err { color: var(--red);   }
+.sys-status-msg.working { color: var(--text-dim); }
+.sys-logged-in-box {
+  border: 1px solid var(--border);
+  background: rgba(42,37,32,0.05);
+  padding: 12px 14px; margin-top: 12px;
+}
+.sys-logged-in-box .lbl {
+  font-size: 9px; letter-spacing: 3px;
+  color: var(--text-faint); text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.sys-logged-in-box .val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; color: var(--text);
+  letter-spacing: 1px; margin-bottom: 10px;
+}
+.sys-sync-row {
+  display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;
+}
+.sys-sync-status {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: 1px;
+  color: var(--text-faint); margin-top: 6px;
+}
+.res-bar-wrap { margin-bottom: 6px; }
+.res-bar-top { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 2px; color: var(--text-faint); margin-bottom: 3px; }
+.res-bar { height: 2px; background: var(--border); }
+.res-bar-fill { height: 100%; background: var(--dark2); }
+.sat-box {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--text-faint); text-transform: uppercase;
+}
+.sat-box .sat-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.sat-indicator {
+  font-size: 8px; padding: 1px 5px;
+  border: 1px solid; text-transform: uppercase;
+}
+.sat-online  { border-color: var(--green); color: var(--green); }
+.sat-offline { border-color: var(--red);   color: var(--red);   }
+.sync-log {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; line-height: 2;
+  color: var(--text-dim); margin-top: 8px;
+  max-height: 120px; overflow-y: auto;
+}
+.sync-log span { display: block; }
+.sync-log .sl-ok  { color: var(--green); }
+.sync-log .sl-err { color: var(--red); }
+.sync-log .sl-inf { color: var(--text-faint); }
+</style>
 </head>
 <body>
 
-    <div class="container">
-        <div id="auth-section">
-            <h2 style="font-weight: 300; margin-bottom: 30px;">Login</h2>
-            <input type="email" id="email" placeholder="email@example.com">
-            <input type="password" id="password" placeholder="password">
-            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
-                <button class="btn" onclick="signup()">Sign Up</button>
-                <button class="btn btn-primary" onclick="login()">Login</button>
+<div id="boot">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="boot-bracket">[</div>
+    <div class="boot-title">NieR&nbsp;:&nbsp;Automata</div>
+    <div class="boot-bracket">]</div>
+  </div>
+  <div class="boot-sub">YoRHa Operating System</div>
+  <div class="boot-bar-outer"><div class="boot-bar" id="boot-bar"></div></div>
+  <div class="boot-log" id="boot-log">
+    <span>Initializing YoRHa Tactical Interface...</span>
+    <span>Memory subsystems — OK</span>
+    <span>Black Box integrity — CONFIRMED</span>
+    <span>Uplink to Bunker — FAILED (autonomous mode)</span>
+    <span>Mission database — LOADED</span>
+    <span>Inventory index — LOADED</span>
+    <span>Black Box log — DECRYPTED</span>
+    <span>UI subsystems — READY</span>
+    <span>Welcome, Operator.</span>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topnav">
+    <div class="nav-tab active" data-tab="quests"><div class="nav-icon">◈</div>QUESTS</div>
+    <div class="nav-tab" data-tab="map"><div class="nav-icon">⊞</div>MAP</div>
+    <div class="nav-tab" data-tab="items"><div class="nav-icon">◇</div>ITEMS</div>
+    <div class="nav-tab" data-tab="log"><div class="nav-icon">✉</div>INTEL</div>
+    <div class="nav-tab" data-tab="terminal"><div class="nav-icon">▶</div>TERMINAL</div>
+    <div class="nav-tab" data-tab="system"><div class="nav-icon">○</div>SYSTEM</div>
+    <div style="flex:1"></div>
+    <div style="display:flex;align-items:center;gap:16px;padding:0 16px">
+      <div style="font-size:9px;letter-spacing:2px;color:rgba(212,205,184,0.35)">UNIT: 2B</div>
+      <div style="font-size:9px;letter-spacing:2px;color:rgba(212,205,184,0.35)" id="clock-nav"></div>
+    </div>
+  </div>
+  <div class="dots" style="background-color:var(--dark)"></div>
+
+  <div id="content">
+    <div class="panel active" id="panel-quests">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">Quests</span>
+        <span class="panel-big-sub">— Mission Directives</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div class="add-form-wrap" id="quest-add-form">
+        <div class="f-row">
+          <div style="flex:1"><label class="f-label">Directive Name</label><input class="f-input" id="nq-title" placeholder="Enter directive name..."></div>
+          <div><label class="f-label">Type</label><select class="f-select" id="nq-type"><option value="combat">COMBAT</option><option value="recon">RECON</option><option value="support">SUPPORT</option><option value="personal">PERSONAL</option></select></div>
+          <div><label class="f-label">Status</label><select class="f-select" id="nq-status"><option value="active">ACTIVE</option><option value="pending">PENDING</option></select></div>
+        </div>
+        <input class="f-input" id="nq-desc" placeholder="Description (optional)...">
+        <input class="f-input" id="nq-subs" placeholder="Subquests — comma separated...">
+        <div class="btn-row"><button class="btn primary" onclick="addQuest()">Confirm Directive</button><button class="btn" onclick="closeAddQuest()">Cancel</button></div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-btn active" data-qfilter="all">All</div>
+        <div class="filter-btn" data-qfilter="active">Active</div>
+        <div class="filter-btn" data-qfilter="pending">Pending</div>
+        <div class="filter-btn" data-qfilter="complete">Complete</div>
+        <div style="flex:1"></div>
+        <div class="filter-btn" onclick="openAddQuest()" style="border-left:1px solid var(--border)">+ New Directive</div>
+      </div>
+      <div class="two-col">
+        <div class="col-left"><div class="col-scroll" id="quest-list"></div></div>
+        <div class="col-right">
+          <div class="right-main" id="quest-detail"><div class="empty-state">Select a directive to view details</div></div>
+          <div class="status-panel" id="quest-status-panel">
+            <div class="sp-box">
+              <div class="sp-title">Status <span>2B</span></div>
+              <div class="sp-row">HP <span>3,950/3,950</span></div>
+              <div class="sp-row">EXP <span>235,554</span></div>
+              <div class="sp-row">Funds <span>682,847G</span></div>
             </div>
+            <div class="sp-box">
+              <div class="sp-title">Directives</div>
+              <div class="sp-row">Active <span id="qsp-active">0</span></div>
+              <div class="sp-row">Complete <span id="qsp-done">0</span></div>
+              <div class="sp-row">Total <span id="qsp-total">0</span></div>
+            </div>
+            <div class="stat-bar-wrap">
+              <div class="stat-bar-label">Overall Completion</div>
+              <div class="stat-bar"><div class="stat-bar-fill" id="qsp-pct" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-map">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">Map</span>
+        <span class="panel-big-sub">— Tactical Overview</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div style="padding:8px 24px;display:flex;gap:24px;align-items:center;flex-shrink:0;border-bottom:1px solid var(--border)">
+        <span style="font-size:9px;letter-spacing:2px;color:var(--text-faint)">■ ACTIVE</span>
+        <span style="font-size:9px;letter-spacing:2px;color:var(--text-faint)">□ PENDING</span>
+        <span style="font-size:9px;letter-spacing:2px;color:var(--green)">■ COMPLETE</span>
+        <span style="font-size:9px;letter-spacing:2px;color:var(--red)">■ FAILED</span>
+        <div style="margin-left:auto"><button class="btn" onclick="renderMap()">Refresh</button></div>
+      </div>
+      <div id="map-canvas"><svg id="map-svg"></svg></div>
+    </div>
+    <div class="panel" id="panel-items">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">Items</span>
+        <span class="panel-big-sub">— All Items</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div class="add-form-wrap" id="item-add-form">
+        <div class="f-row">
+          <div style="flex:1"><label class="f-label">Item Name</label><input class="f-input" id="ni-name" placeholder="Item name..."></div>
+          <div><label class="f-label">Type</label><select class="f-select" id="ni-type"><option value="weapon">WEAPON</option><option value="material">MATERIAL</option><option value="key">KEY ITEM</option><option value="consumable">CONSUMABLE</option></select></div>
+        </div>
+        <label class="f-label">Contents / Notes</label>
+        <textarea class="f-textarea" id="ni-body" placeholder="Item description..."></textarea>
+        <div class="btn-row"><button class="btn primary" onclick="addItem()">Acquire Item</button><button class="btn" onclick="closeAddItem()">Cancel</button></div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-btn active" data-ifilter="all">All Items</div>
+        <div class="filter-btn" data-ifilter="weapon">Weapons</div>
+        <div class="filter-btn" data-ifilter="material">Materials</div>
+        <div class="filter-btn" data-ifilter="key">Key Items</div>
+        <div class="filter-btn" data-ifilter="consumable">Consumables</div>
+        <div style="flex:1"></div>
+        <div class="filter-btn" onclick="openAddItem()" style="border-left:1px solid var(--border)">+ Add Item</div>
+      </div>
+      <div class="two-col">
+        <div class="col-left"><div class="col-scroll" id="item-list"></div></div>
+        <div class="col-right">
+          <div class="right-main" id="item-detail"><div class="empty-state">Select an item to view</div></div>
+          <div class="status-panel">
+            <div class="sp-box">
+              <div class="sp-title">Status</div>
+              <div class="sp-row">Unit <span>2B</span></div>
+              <div class="sp-row">Lv <span>52</span></div>
+              <div class="sp-row">Funds <span>682,847G</span></div>
+              <div class="sp-row">EXP <span>235,554</span></div>
+              <div class="sp-row">HP <span>3,950/3,950</span></div>
+              <div class="sp-row">ATK <span>3,607</span></div>
+              <div class="sp-row">DEF <span>1,497</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-log">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">Intel</span>
+        <span class="panel-big-sub">— Black Box Log</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div class="add-form-wrap" id="log-add-form">
+        <div class="f-row">
+          <div style="flex:1"><label class="f-label">Log Title</label><input class="f-input" id="nl-title" placeholder="Entry title..."></div>
+          <div><label class="f-label">Classification</label><select class="f-select" id="nl-class"><option value="standard">STANDARD</option><option value="classified">CLASSIFIED</option><option value="corrupted">CORRUPTED</option></select></div>
+        </div>
+        <input class="f-input" id="nl-tags" placeholder="Tags — comma separated...">
+        <label class="f-label">Log Entry</label>
+        <textarea class="f-textarea" id="nl-body" placeholder="Begin log entry..." style="min-height:90px"></textarea>
+        <div class="btn-row"><button class="btn primary" onclick="addLogEntry()">Commit to Black Box</button><button class="btn" onclick="closeAddLog()">Abort</button></div>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-btn active" data-lfilter="all">All Entries</div>
+        <div class="filter-btn" data-lfilter="standard">Standard</div>
+        <div class="filter-btn" data-lfilter="classified">Classified</div>
+        <div style="flex:1"></div>
+        <div class="filter-btn" onclick="openAddLog()" style="border-left:1px solid var(--border)">+ New Entry</div>
+      </div>
+      <div class="two-col">
+        <div class="col-left"><div class="col-scroll" id="log-list"></div></div>
+        <div class="right-main" id="log-detail"><div class="empty-state">Select a log entry to read</div></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-terminal">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">Terminal</span>
+        <span class="panel-big-sub">— Access Point</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div class="terminal-outer">
+        <div id="terminal-output"></div>
+        <div id="terminal-input-row">
+          <span class="t-ps1">YoRHa@2B:~$</span>
+          <input id="terminal-input" type="text" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-system">
+      <div class="panel-titlebar">
+        <span class="panel-big-title">System</span>
+        <span class="panel-big-sub">— YoRHa Operating System</span>
+        <hr class="title-dotted-line">
+      </div>
+      <div class="sys-layout">
+        <div class="sys-left">
+          <div class="sys-clock" id="sys-clock">00:00</div>
+          <div class="sys-date"  id="sys-date">----.--.--</div>
+          <div class="sys-title-big">[ NieR : Automata ]</div>
+          <div class="sys-title-sub">YoRHa Operating System</div>
+          <div style="margin-bottom:24px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text-faint)">
+            <div style="margin-bottom:4px">CURRENT LOCATION: CITY RUINS [SECTOR 0-1]</div>
+            <div style="color:var(--text);letter-spacing:2px;margin-bottom:4px">MISSION STATUS: <span id="sys-mission-status">ACTIVE</span></div>
+            <div style="margin-bottom:2px">Objective: Maintain operational records and directives.</div>
+            <div style="color:var(--green);margin-top:8px;letter-spacing:2px">SYSTEM SYNCHRONIZATION: <span id="sys-sync-state">LOCAL ONLY</span></div>
+          </div>
+          <hr style="border:none;border-top:1px dotted var(--border-dark);margin-bottom:24px">
+          <div id="sys-login-section">
+            <div class="sys-section-label">Authentication</div>
+            <div class="sys-login-row">
+              <div class="sys-login-indicator" id="sys-login-dot"></div>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-dim)" id="sys-login-label">NOT AUTHENTICATED</span>
+            </div>
+            <input class="sys-input" id="sys-email" type="email" placeholder="email address" autocomplete="email">
+            <input class="sys-input" id="sys-password" type="password" placeholder="••••••••" autocomplete="current-password">
+            <div class="sys-btn-row">
+              <button class="btn primary" onclick="sysLogin()">◆ Sign In</button>
+              <button class="btn" onclick="sysRegister()">◆ Register</button>
+            </div>
+            <div class="sys-status-msg" id="sys-auth-msg"></div>
+          </div>
+          <div id="sys-session-section" style="display:none">
+            <div class="sys-section-label">Active Session</div>
+            <div class="sys-logged-in-box">
+              <div class="lbl">Unit</div>
+              <div class="val" id="sys-unit-email">—</div>
+              <div class="lbl">Auth</div>
+              <div class="val">Ok</div>
+              <div class="lbl">Bunker Link</div>
+              <div class="val sat-online" style="font-size:10px;letter-spacing:2px" id="sys-link-status">CONNECTED</div>
+            </div>
+
+            <div style="margin-top:20px">
+              <div class="sys-section-label">Data Synchronisation</div>
+              <p style="font-size:10px;color:var(--text-faint);letter-spacing:0.5px;line-height:1.8;margin-bottom:12px">
+                LOAD pulls your saved data from the Bunker and replaces local state.<br>
+                SAVE pushes current local data to the Bunker, overwriting the remote copy.
+              </p>
+              <div class="sys-sync-row">
+                <button class="btn primary" onclick="sysLoad()">◆ LOAD from Bunker</button>
+                <button class="btn" onclick="sysSave()">◆ SAVE to Bunker</button>
+              </div>
+              <div class="sync-log" id="sync-log"></div>
+            </div>
+
+            <div style="margin-top:20px">
+              <button class="btn danger" onclick="sysLogout()">◆ Sign Out</button>
+            </div>
+          </div>
+        </div>
+        <div class="sys-right">
+          <div class="sp-box">
+            <div class="sp-title">Status <span id="sys-sp-lv">Lv: —</span></div>
+            <div class="sp-row">Unit <span>2 Type B</span></div>
+            <div class="sp-row">Funds <span>682,847</span></div>
+            <div class="sp-row">EXP <span>235,554</span></div>
+            <div class="sp-row">HP <span>3,950 / 3,950</span></div>
+            <div class="sp-row">Auth <span id="sys-sp-auth">—</span></div>
+          </div>
+
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-faint);line-height:2;margin-top:4px">
+            SYNC_UNK.ESTABLISHED.STAGE.00<br>
+            SYNC_UNK.ESTABLISHED.STAGE.01<br>
+            SYNC_UNK.ESTABLISHED.STAGE.02
+          </div>
+
+          <div style="margin-top:8px">
+            <div class="res-bar-wrap">
+              <div class="res-bar-top"><span>CPU</span><span id="sys-cpu">—</span></div>
+              <div class="res-bar"><div class="res-bar-fill" id="sys-cpu-bar" style="width:0%"></div></div>
+            </div>
+            <div class="res-bar-wrap">
+              <div class="res-bar-top"><span>MEM</span><span id="sys-mem">—</span></div>
+              <div class="res-bar"><div class="res-bar-fill" id="sys-mem-bar" style="width:0%"></div></div>
+            </div>
+            <div class="res-bar-wrap">
+              <div class="res-bar-top"><span>HDD</span><span id="sys-hdd">—</span></div>
+              <div class="res-bar"><div class="res-bar-fill" id="sys-hdd-bar" style="width:0%"></div></div>
+            </div>
+          </div>
+
+          <div class="sat-box" style="margin-top:8px">
+            SATELLITE LINK [BUNKER]
+            <div class="sat-row">
+              <span class="sat-indicator" id="sys-sat-indicator" style="border-color:var(--red);color:var(--red)">OFFLINE</span>
+              <span style="font-size:9px;letter-spacing:1px;color:var(--text-faint)">SECURE CH-04</span>
+            </div>
+          </div>
+
+          <div class="sp-box" style="margin-top:8px">
+            <div class="sp-title">Local Data</div>
+            <div class="sp-row">Directives <span id="sys-count-q">0</span></div>
+            <div class="sp-row">Log Entries <span id="sys-count-l">0</span></div>
+            <div class="sp-row">Inventory <span id="sys-count-i">0</span></div>
+          </div>
         </div>
 
-        <div id="task-section" style="display:none;">
-            <header>
-                <h1>TASKS</h1>
-                <span class="logout-link" onclick="logout()">logout</span>
-            </header>
-
-            <form id="task-form">
-                <input type="text" id="task-input" placeholder="Add a new task... (Ctrl + /)" required autocomplete="off">
-            </form>
-
-            <div id="task-list"></div>
-        </div>
+      </div>
     </div>
 
-    <div id="toast">
-        <span>Task deleted</span>
-        <span id="undo-btn">UNDO</span>
+  </div><!-- /#content -->
+    <div class="sb-hint" id="sb-hint">Select item to view.</div>
+    <div class="sb-controls">
+      <div class="sb-ctrl"><span class="sb-btn">↑↓</span> Select</div>
+      <div class="sb-ctrl"><span class="sb-btn">Enter</span> Confirm</div>
+      <div class="sb-ctrl"><span class="sb-btn">Esc</span> Back</div>
     </div>
+  </div>
+</div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, deleteDoc, updateDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+<div class="modal-overlay" id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-title" id="conf-title">Confirm Action</div>
+    <div class="confirm-sub" id="conf-sub"></div>
+    <hr class="confirm-line">
+    <div class="btn-row" style="justify-content:center">
+      <button class="btn primary" id="conf-yes">[ Y ]  Confirm</button>
+      <button class="btn" id="conf-no">[ N ]  Abort</button>
+    </div>
+  </div>
+</div>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAXKzZTsBt9LQZz2ah9IBRzWyuSMOeHCF8",
-        authDomain: "htmx-5e52b.firebaseapp.com",
-        projectId: "htmx-5e52b",
-        storageBucket: "htmx-5e52b.firebasestorage.app",
-        messagingSenderId: "955801445157",
-        appId: "1:955801445157:web:60997c1f03452973e9b0cc"
-    };
+<script>
+let quests=[
+  {id:1,title:"Establish Secure Perimeter",type:"combat",status:"active",desc:"Identify and neutralize all threats within operational zone.",subs:[{id:1,text:"Recon east sector",done:true},{id:2,text:"Disable enemy uplink node",done:true},{id:3,text:"Patrol perimeter: 3km radius",done:false},{id:4,text:"Report to Operator",done:false}]},
+  {id:2,title:"Recover Machine Lifeform Data",type:"recon",status:"active",desc:"Extract functional core data from decommissioned machine units.",subs:[{id:1,text:"Locate data cache: Grid C-7",done:false},{id:2,text:"Decrypt storage medium",done:false},{id:3,text:"Transmit to Bunker",done:false}]},
+  {id:3,title:"Maintain Combat Proficiency",type:"personal",status:"pending",desc:"Regular training protocols to maintain peak operational efficiency.",subs:[{id:1,text:"Blade calibration",done:false},{id:2,text:"Pod program updates",done:false}]},
+  {id:4,title:"Bunker Uplink Restoration",type:"support",status:"active",desc:"Restore communication with YoRHa command structure.",subs:[{id:1,text:"Diagnose antenna array",done:true},{id:2,text:"Replace signal booster",done:false},{id:3,text:"Test uplink protocol",done:false}]},
+  {id:5,title:"Investigate Anomaly: Zone Delta",type:"recon",status:"complete",desc:"Anomalous readings in Zone Delta. Origin unknown.",subs:[{id:1,text:"Reach anomaly coordinates",done:true},{id:2,text:"Collect environmental samples",done:true},{id:3,text:"Document findings",done:true}]},
+];
+let logEntries=[
+  {id:1,date:"11945-03-07",unit:"YoRHa No.2 Type B",classification:"standard",title:"Initial Deployment — Earth Surface",body:"Atmosphere: hostile. Ruins of what appears to be human infrastructure stretch in all directions.\n\nMachine lifeforms detected in high concentrations north of landing zone. Combat engagement: 37 units neutralized. Pod 042 sustained minor damage — self-repair initiated.\n\nThe scale of destruction here is difficult to process. Even for an android.\n\nNote: Pod recommends emotional suppression. Noted.",tags:["DEPLOYMENT","COMBAT","EARTH"]},
+  {id:2,date:"11945-03-05",unit:"YoRHa No.2 Type B",classification:"classified",title:"Anomalous Behavior — Machine Units",body:"CLASSIFICATION: RESTRICTED\n\nSeveral machine lifeforms observed exhibiting unexpected behavior. They were not attacking.\n\nThey appeared to be... dancing.\n\nThis behavior does not align with known combat algorithms. Further observation required. Not transmitting until uplink is restored.",tags:["ANOMALY","MACHINE","PRIORITY"]},
+  {id:3,date:"11945-02-28",unit:"YoRHa No.2 Type B",classification:"corrupted",title:"ERR — [DATA CORRUPTED]",body:"Data integrity failure.\n\nContents [REDACTED]\n\n...the machines said something. In our language.\n\nLog end.",tags:["CORRUPTED","ERROR"]},
+];
+let inventory=[
+  {id:1,name:"Virtuous Contract",type:"weapon",icon:"⚔️",qty:1,body:"Primary melee weapon. Single-edged blade. Optimal for mid-range engagements.\n\nATK: 216–270  Combo: Lt.5  Hv.2  Li.6  Hv.2\n\nNotes: Keep edge calibrated. Resonance frequency: 440 Hz."},
+  {id:2,name:"YoRHa Field Manual",type:"material",icon:"📋",qty:1,body:"Standard operational protocols for surface deployment.\n\nChapter 7: Autonomous decision-making in uplink-severed conditions.\n\n\"When in doubt, destroy everything.\""},
+  {id:3,name:"Operator Comm Codes",type:"key",icon:"🔑",qty:1,body:"Encrypted communication identifiers.\n\nOperator backup frequency: 8844.7 MHz\nAuthentication: [CLASSIFIED]"},
+  {id:4,name:"Repair Kit",type:"consumable",icon:"🔧",qty:3,body:"Basic field repair components. Quantity: 3 remaining.\n\nSufficient for minor structural damage only."},
+  {id:5,name:"Rusty Bolt",type:"material",icon:"🔩",qty:21,body:"A rusted, beat-up bolt.\n\nNumber Held: 21/99\n\nMight be useful for upgrades or repairs."},
+];
+let nqid=6,nlid=4,niid=6;
+let selQuest=null,selItem=null,selLog=null;
+let qFilter='all',iFilter='all',lFilter='all';
+let confCb=null,termHist=[],termHistIdx=-1;
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth();
+window.addEventListener('load',()=>{
+  window._st=Date.now();
+  const lines=document.querySelectorAll('#boot-log span'),bar=document.getElementById('boot-bar');
+  let i=0;
+  function next(){if(i<lines.length){lines[i++].classList.add('show');bar.style.width=(i/lines.length*100)+'%';setTimeout(next,150+Math.random()*100);}else{setTimeout(()=>{document.getElementById('boot').classList.add('hidden');document.getElementById('app').classList.add('visible');renderQuests();renderLog();renderItems();initTerminal();updateClock();setInterval(updateClock,1000);updateQStats();},500);}}
+  setTimeout(next,300);
+});
 
-    let lastDeletedTask = null;
-    let undoTimeout = null;
+function updateClock(){const n=new Date(),p=x=>String(x).padStart(2,'0');const s=`${n.getFullYear()}.${p(n.getMonth()+1)}.${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}`;document.getElementById('clock-nav').textContent=s;document.getElementById('sb-hint').textContent=`${s}  ·  SYSTEM STATE: NO ERROR`;}
 
-    onAuthStateChanged(auth, (user) => {
-        document.getElementById('auth-section').style.display = user ? "none" : "block";
-        document.getElementById('task-section').style.display = user ? "block" : "none";
-        if (user) loadTasks();
+document.querySelectorAll('.nav-tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');if(t.dataset.tab==='map')setTimeout(renderMap,30);if(t.dataset.tab==='terminal')document.getElementById('terminal-input').focus();});});
+
+document.querySelectorAll('[data-qfilter]').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('[data-qfilter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');qFilter=b.dataset.qfilter;renderQuests();});});
+document.querySelectorAll('[data-ifilter]').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('[data-ifilter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');iFilter=b.dataset.ifilter;renderItems();});});
+document.querySelectorAll('[data-lfilter]').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('[data-lfilter]').forEach(x=>x.classList.remove('active'));b.classList.add('active');lFilter=b.dataset.lfilter;renderLog();});});
+
+function updateQStats(){const a=quests.filter(q=>q.status==='active').length,d=quests.filter(q=>q.status==='complete').length;document.getElementById('qsp-active').textContent=a;document.getElementById('qsp-done').textContent=d;document.getElementById('qsp-total').textContent=quests.length;document.getElementById('qsp-pct').style.width=quests.length?Math.round(d/quests.length*100)+'%':'0%';}
+function openAddQuest(){document.getElementById('quest-add-form').classList.add('open');}
+function closeAddQuest(){document.getElementById('quest-add-form').classList.remove('open');}
+function addQuest(){const t=document.getElementById('nq-title').value.trim();if(!t)return;const type=document.getElementById('nq-type').value,st=document.getElementById('nq-status').value,desc=document.getElementById('nq-desc').value.trim(),subs=document.getElementById('nq-subs').value.split(',').map(s=>s.trim()).filter(Boolean).map((x,i)=>({id:i+1,text:x,done:false}));quests.unshift({id:nqid++,title:t,type,status:st,desc,subs});['nq-title','nq-desc','nq-subs'].forEach(id=>document.getElementById(id).value='');closeAddQuest();renderQuests();updateQStats();}
+
+function renderQuests(){
+  const list=document.getElementById('quest-list');
+  let f=quests;if(qFilter!=='all')f=quests.filter(q=>q.status===qFilter);
+  list.innerHTML=f.length?f.map(q=>{const s=selQuest&&selQuest.id===q.id;return`<div class="list-item ${s?'selected':''}" onclick="selectQuest(${q.id})"><div class="li-icon ${s?'sel':'filled'}"></div><div style="flex:1"><div style="font-size:12px;${s?'color:var(--sel-text)':'color:var(--text)'}">${q.title}</div><div style="font-size:9px;letter-spacing:1px;${s?'color:rgba(212,205,184,0.4)':'color:var(--text-faint)'}">${q.type.toUpperCase()}</div></div><div class="q-stag st-${q.status}" style="${s?'border-color:rgba(212,205,184,0.35);color:rgba(212,205,184,0.6)':''}">${q.status}</div></div>`;}).join(''):'<div class="empty-state">No directives found</div>';
+  updateQStats();
+}
+
+function selectQuest(id){
+  selQuest=quests.find(q=>q.id===id);renderQuests();
+  const q=selQuest,done=q.subs.filter(s=>s.done).length,total=q.subs.length,pct=total?Math.round(done/total*100):0;
+  document.getElementById('quest-detail').innerHTML=`
+    <div class="quest-detail-top">
+      <div class="quest-detail-title">${q.title}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><span style="font-size:9px;letter-spacing:2px;color:var(--text-faint);text-transform:uppercase">${q.type}</span><span class="q-stag st-${q.status}">${q.status}</span></div>
+      ${q.desc?`<div class="quest-detail-desc">${q.desc}</div>`:''}
+      ${total?`<div style="margin-top:10px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-faint);margin-bottom:4px">PROGRESS — ${done}/${total} (${pct}%)</div><div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div></div>`:''}
+    </div>
+    ${total?`<div class="subquest-section"><div class="sub-title">Subquests</div>${q.subs.map(s=>`<div class="sub-item ${s.done?'done':''}" onclick="toggleSub(${q.id},${s.id})"><div class="sub-check ${s.done?'done':''}">${s.done?'✓':''}</div><div class="sub-text">${s.text}</div></div>`).join('')}</div>`:''}
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+      ${q.status!=='complete'?`<button class="btn" onclick="setQS(${q.id},'complete')">Mark Complete</button>`:''}
+      ${q.status==='pending'?`<button class="btn" onclick="setQS(${q.id},'active')">Activate</button>`:''}
+      <button class="btn danger" onclick="confirmAction('Delete this directive?','All data will be permanently removed.',()=>deleteQuest(${q.id}))">Delete</button>
+    </div>`;
+}
+
+function toggleSub(qid,sid){const q=quests.find(x=>x.id===qid),s=q.subs.find(x=>x.id===sid);s.done=!s.done;if(q.subs.length&&q.subs.every(s=>s.done)&&q.status==='active')q.status='complete';renderQuests();selectQuest(qid);}
+function setQS(id,status){quests.find(q=>q.id===id).status=status;renderQuests();selectQuest(id);}
+function deleteQuest(id){quests=quests.filter(q=>q.id!==id);selQuest=null;document.getElementById('quest-detail').innerHTML='<div class="empty-state">Select a directive to view details</div>';renderQuests();}
+
+function openAddLog(){document.getElementById('log-add-form').classList.add('open');}
+function closeAddLog(){document.getElementById('log-add-form').classList.remove('open');}
+function addLogEntry(){const t=document.getElementById('nl-title').value.trim();if(!t)return;const body=document.getElementById('nl-body').value.trim(),cls=document.getElementById('nl-class').value,tags=document.getElementById('nl-tags').value.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean),n=new Date(),p=x=>String(x).padStart(2,'0');logEntries.unshift({id:nlid++,date:`${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}`,unit:"YoRHa No.2 Type B",classification:cls,title:t,body,tags});['nl-title','nl-body','nl-tags'].forEach(id=>document.getElementById(id).value='');closeAddLog();renderLog();}
+
+function renderLog(){
+  const list=document.getElementById('log-list');
+  let f=logEntries;if(lFilter!=='all')f=logEntries.filter(e=>e.classification===lFilter);
+  list.innerHTML=f.map(e=>{const s=selLog&&selLog.id===e.id;return`<div class="list-item ${s?'selected':''}" onclick="selectLog(${e.id})"><div class="li-icon ${s?'sel':'filled'}"></div><div style="flex:1"><div style="font-size:12px;${s?'color:var(--sel-text)':'color:var(--text)'}">${e.title}</div><div style="font-size:9px;letter-spacing:1px;${s?'color:rgba(212,205,184,0.4)':'color:var(--text-faint)'}">${e.date}</div></div><div class="lc-badge lc-${e.classification}" style="${s?'border-color:rgba(212,205,184,0.3);color:rgba(212,205,184,0.5)':''}">${e.classification}</div></div>`;}).join('')||'<div class="empty-state">No entries</div>';
+}
+
+function selectLog(id){
+  selLog=logEntries.find(e=>e.id===id);renderLog();const e=selLog;
+  document.getElementById('log-detail').innerHTML=`
+    <div class="log-detail-header">
+      <div class="log-detail-title">${e.title}</div>
+      <div class="log-detail-meta">${e.date} &nbsp;·&nbsp; ${e.unit} &nbsp;<span class="lc-badge lc-${e.classification}">${e.classification.toUpperCase()}</span></div>
+    </div>
+    <div class="log-detail-body ${e.classification==='corrupted'?'corrupted':''}">${e.body}</div>
+    <div class="log-tags">${e.tags.map(t=>`<span class="log-tag-pill">${t}</span>`).join('')}</div>
+    <div style="padding:8px 20px 16px;border-top:1px solid var(--border)">
+      <button class="btn danger" onclick="confirmAction('Delete log entry?','This record will be erased.',()=>deleteLog(${e.id}))">Delete Entry</button>
+    </div>`;
+}
+
+function deleteLog(id){logEntries=logEntries.filter(e=>e.id!==id);selLog=null;document.getElementById('log-detail').innerHTML='<div class="empty-state">Select a log entry to read</div>';renderLog();}
+
+function openAddItem(){document.getElementById('item-add-form').classList.add('open');}
+function closeAddItem(){document.getElementById('item-add-form').classList.remove('open');}
+function addItem(){const n=document.getElementById('ni-name').value.trim();if(!n)return;const type=document.getElementById('ni-type').value,body=document.getElementById('ni-body').value.trim(),icons={weapon:'⚔️',material:'📋',key:'🔑',consumable:'🔧'};inventory.unshift({id:niid++,name:n,type,icon:icons[type],qty:1,body});['ni-name','ni-body'].forEach(id=>document.getElementById(id).value='');closeAddItem();renderItems();}
+
+function renderItems(){
+  const list=document.getElementById('item-list');
+  let f=inventory;if(iFilter!=='all')f=inventory.filter(i=>i.type===iFilter);
+  list.innerHTML=f.map(item=>{const s=selItem&&selItem.id===item.id;return`<div class="list-item ${s?'selected':''}" onclick="selectItem(${item.id})"><div class="li-icon ${s?'sel':'filled'}"></div><div style="flex:1"><div style="font-size:12px;${s?'color:var(--sel-text)':'color:var(--text)'}">${item.name}</div><div style="font-size:9px;letter-spacing:1px;${s?'color:rgba(212,205,184,0.4)':'color:var(--text-faint)'}">${item.type.toUpperCase()}</div></div><div style="font-size:11px;${s?'color:rgba(212,205,184,0.6)':'color:var(--text-dim)'}">${item.qty}</div></div>`;}).join('')||'<div class="empty-state">No items</div>';
+}
+
+function selectItem(id){
+  selItem=inventory.find(i=>i.id===id);renderItems();const item=selItem;
+  document.getElementById('item-detail').innerHTML=`
+    <div class="inv-detail-top">
+      <div class="inv-icon-box">${item.icon}</div>
+      <div>
+        <div class="inv-detail-name">${item.name}</div>
+        <div class="inv-detail-type">${item.type.toUpperCase()}</div>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--text-faint);margin-top:6px">Number Held: ${item.qty}</div>
+      </div>
+    </div>
+    <div class="inv-detail-body">${item.body}</div>
+    <div style="padding:8px 20px 16px;border-top:1px solid var(--border)">
+      <button class="btn danger" onclick="confirmAction('Discard item?','Item will be permanently removed.',()=>deleteItem(${item.id}))">Discard Item</button>
+    </div>`;
+}
+
+function deleteItem(id){inventory=inventory.filter(i=>i.id!==id);selItem=null;document.getElementById('item-detail').innerHTML='<div class="empty-state">Select an item to view</div>';renderItems();}
+
+function renderMap(){
+  const svg=document.getElementById('map-svg');
+  const W=svg.clientWidth||900,H=svg.clientHeight||450;
+  svg.innerHTML='';
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const pat=document.createElementNS('http://www.w3.org/2000/svg','pattern');
+  pat.setAttribute('id','mgrid');pat.setAttribute('width','20');pat.setAttribute('height','20');pat.setAttribute('patternUnits','userSpaceOnUse');
+  const pl=document.createElementNS('http://www.w3.org/2000/svg','path');
+  pl.setAttribute('d','M 20 0 L 0 0 0 20');pl.setAttribute('fill','none');pl.setAttribute('stroke','rgba(42,37,32,0.1)');pl.setAttribute('stroke-width','0.5');
+  pat.appendChild(pl);defs.appendChild(pat);svg.appendChild(defs);
+  const bgr=document.createElementNS('http://www.w3.org/2000/svg','rect');bgr.setAttribute('width','100%');bgr.setAttribute('height','100%');bgr.setAttribute('fill','url(#mgrid)');svg.appendChild(bgr);
+
+  const cols=Math.min(quests.length,4),nodeW=190,nodeH=76;
+  const totalW=cols*nodeW+(cols-1)*40,startX=(W-totalW)/2;
+  const rows=Math.ceil(quests.length/cols),totalH=rows*nodeH+(rows-1)*56,startY=(H-totalH)/2;
+  const pos=quests.map((q,i)=>({x:startX+(i%cols)*(nodeW+40)+nodeW/2,y:startY+Math.floor(i/cols)*(nodeH+56)+nodeH/2,q}));
+
+  for(let i=0;i<pos.length-1;i++){const a=pos[i],b=pos[i+1];const l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',a.x);l.setAttribute('y1',a.y);l.setAttribute('x2',b.x);l.setAttribute('y2',b.y);l.setAttribute('stroke','rgba(42,37,32,0.13)');l.setAttribute('stroke-width','1');l.setAttribute('stroke-dasharray','3,5');svg.appendChild(l);}
+  pos.forEach(({x,y})=>{const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r','3');c.setAttribute('fill','rgba(42,37,32,0.18)');svg.appendChild(c);});
+
+  const sc={active:{fill:'rgba(42,37,32,0.88)',stroke:'#2a2520',text:'#d4cdb8',sub:'rgba(212,205,184,0.45)'},pending:{fill:'rgba(42,37,32,0.06)',stroke:'#7a7060',text:'#6a6050',sub:'rgba(106,96,80,0.4)'},complete:{fill:'rgba(58,90,42,0.1)',stroke:'#3a5a2a',text:'#3a5a2a',sub:'rgba(58,90,42,0.45)'},failed:{fill:'rgba(106,42,26,0.1)',stroke:'#6a2a1a',text:'#6a2a1a',sub:'rgba(106,42,26,0.4)'},abandoned:{fill:'rgba(42,37,32,0.03)',stroke:'#b0a890',text:'#b0a890',sub:'rgba(176,168,144,0.35)'}};
+
+  pos.forEach(({x,y,q})=>{
+    const c=sc[q.status]||sc.pending;
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.style.cursor='pointer';
+    const sh=document.createElementNS('http://www.w3.org/2000/svg','rect');sh.setAttribute('x',x-nodeW/2+2);sh.setAttribute('y',y-nodeH/2+2);sh.setAttribute('width',nodeW);sh.setAttribute('height',nodeH);sh.setAttribute('fill','rgba(42,37,32,0.07)');g.appendChild(sh);
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('x',x-nodeW/2);r.setAttribute('y',y-nodeH/2);r.setAttribute('width',nodeW);r.setAttribute('height',nodeH);r.setAttribute('fill',c.fill);r.setAttribute('stroke',c.stroke);r.setAttribute('stroke-width','1');g.appendChild(r);
+    [[x-nodeW/2,y-nodeH/2],[x+nodeW/2-4,y-nodeH/2],[x-nodeW/2,y+nodeH/2-4],[x+nodeW/2-4,y+nodeH/2-4]].forEach(([cx,cy])=>{const sq=document.createElementNS('http://www.w3.org/2000/svg','rect');sq.setAttribute('x',cx);sq.setAttribute('y',cy);sq.setAttribute('width',4);sq.setAttribute('height',4);sq.setAttribute('fill',c.stroke);g.appendChild(sq);});
+    const tx=document.createElementNS('http://www.w3.org/2000/svg','text');tx.setAttribute('x',x-nodeW/2+12);tx.setAttribute('y',y-8);tx.setAttribute('fill',c.text);tx.setAttribute('font-family','Josefin Sans,sans-serif');tx.setAttribute('font-size','11');tx.setAttribute('letter-spacing','1');tx.textContent=q.title.length>20?q.title.slice(0,20)+'…':q.title;g.appendChild(tx);
+    const st=document.createElementNS('http://www.w3.org/2000/svg','text');st.setAttribute('x',x-nodeW/2+12);st.setAttribute('y',y+7);st.setAttribute('fill',c.sub);st.setAttribute('font-family','Josefin Sans,sans-serif');st.setAttribute('font-size','9');st.setAttribute('letter-spacing','2');st.textContent=q.status.toUpperCase()+' · '+q.type.toUpperCase();g.appendChild(st);
+    const pct=q.subs.length?q.subs.filter(s=>s.done).length/q.subs.length:0,bw=nodeW-24;
+    const bb=document.createElementNS('http://www.w3.org/2000/svg','rect');bb.setAttribute('x',x-nodeW/2+12);bb.setAttribute('y',y+20);bb.setAttribute('width',bw);bb.setAttribute('height',1);bb.setAttribute('fill',c.sub);g.appendChild(bb);
+    const bf=document.createElementNS('http://www.w3.org/2000/svg','rect');bf.setAttribute('x',x-nodeW/2+12);bf.setAttribute('y',y+19);bf.setAttribute('width',bw*pct);bf.setAttribute('height',2);bf.setAttribute('fill',c.text);g.appendChild(bf);
+    g.addEventListener('click',()=>{document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelector('[data-tab="quests"]').classList.add('active');document.getElementById('panel-quests').classList.add('active');qFilter='all';document.querySelectorAll('[data-qfilter]').forEach(b=>{b.classList.remove('active');if(b.dataset.qfilter==='all')b.classList.add('active');});renderQuests();selectQuest(q.id);});
+    svg.appendChild(g);
+  });
+}
+
+// CONFIRM
+function confirmAction(title,sub,cb){confCb=cb;document.getElementById('conf-title').textContent=title;document.getElementById('conf-sub').textContent=sub;document.getElementById('confirm-modal').classList.add('open');}
+document.getElementById('conf-yes').addEventListener('click',()=>{document.getElementById('confirm-modal').classList.remove('open');if(confCb)confCb();confCb=null;});
+document.getElementById('conf-no').addEventListener('click',()=>{document.getElementById('confirm-modal').classList.remove('open');confCb=null;});
+
+function initTerminal(){
+  const inp=document.getElementById('terminal-input');
+  [`<span class="t-info">YoRHa Tactical Interface — Terminal v3.1.2</span>`,`<span class="t-dim">Type <span class="t-pc">help</span> for commands.</span>`,`<span class="t-dim">────────────────────────────────────</span>`,``].forEach(tA);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){const cmd=inp.value.trim();if(cmd){termHist.unshift(cmd);termHistIdx=-1;tA(`<span class="t-pc">YoRHa@2B:~$</span> <span class="t-dim">${esc(cmd)}</span>`);runCmd(cmd);}inp.value='';}
+    else if(e.key==='ArrowUp'){e.preventDefault();if(termHistIdx<termHist.length-1)termHistIdx++;inp.value=termHist[termHistIdx]||'';}
+    else if(e.key==='ArrowDown'){e.preventDefault();if(termHistIdx>0)termHistIdx--;else{termHistIdx=-1;inp.value='';return;}inp.value=termHist[termHistIdx]||'';}
+  });
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function tA(html){const o=document.getElementById('terminal-output');const s=document.createElement('span');s.className='t-line';s.innerHTML=html;o.appendChild(s);o.scrollTop=o.scrollHeight;}
+function runCmd(raw){
+  const p=raw.trim().split(/\s+/),cmd=p[0].toLowerCase(),args=p.slice(1);
+  const C={
+    help:()=>{[['help','Show this message'],['ls [module]','List quests/log/inv/all'],['cat <n>','View record by name'],['status','System status'],['missions','Active missions'],['whoami','Unit ID'],['date','Timestamp'],['clear','Clear terminal'],['echo <text>','Echo text'],['glory','—']].forEach(([c,d])=>tA(`<span class="t-pc">${c.padEnd(18)}</span><span class="t-dim">${d}</span>`));},
+    ls:()=>{const t=args[0]||'all';if(t==='quests'||t==='all'){tA(`<span class="t-info">── DIRECTIVES ──</span>`);quests.forEach(q=>tA(`<span class="t-dim">[${q.status.padEnd(8)}] ${esc(q.title)}</span>`));}if(t==='log'||t==='all'){tA(`<span class="t-info">── BLACK BOX LOG ──</span>`);logEntries.forEach(e=>tA(`<span class="t-dim">[${e.date}] ${esc(e.title)}</span>`));}if(t==='inv'||t==='all'){tA(`<span class="t-info">── INVENTORY ──</span>`);inventory.forEach(i=>tA(`<span class="t-dim">[${i.type.padEnd(10)}] ${esc(i.name)} ×${i.qty}</span>`));}},
+    cat:()=>{if(!args[0]){tA(`<span class="t-err">usage: cat &lt;name&gt;</span>`);return;}const q=args.join(' ').toLowerCase();const qu=quests.find(x=>x.title.toLowerCase().includes(q));const lg=logEntries.find(x=>x.title.toLowerCase().includes(q));const iv=inventory.find(x=>x.name.toLowerCase().includes(q));if(qu){tA(`<span class="t-info">${esc(qu.title)}</span>`);tA(`<span class="t-dim">STATUS: ${qu.status}  TYPE: ${qu.type}</span>`);if(qu.desc)tA(`<span class="t-dim">${esc(qu.desc)}</span>`);qu.subs.forEach(s=>tA(`<span class="t-dim">[${s.done?'✓':' '}] ${esc(s.text)}</span>`));}else if(lg){tA(`<span class="t-info">${esc(lg.title)}</span>`);tA(`<span class="t-dim">${lg.date}</span>`);lg.body.split('\n').forEach(l=>tA(`<span class="t-dim">${esc(l)}</span>`));}else if(iv){tA(`<span class="t-info">${esc(iv.name)}</span>`);tA(`<span class="t-dim">TYPE: ${iv.type}  QTY: ${iv.qty}</span>`);iv.body.split('\n').forEach(l=>tA(`<span class="t-dim">${esc(l)}</span>`));}else tA(`<span class="t-err">No record matching "${esc(args.join(' '))}"</span>`);},
+    status:()=>{tA(`<span class="t-info">── SYSTEM STATUS ──</span>`);[['UNIT','YoRHa No.2 Type B'],['BUNKER LINK','OFFLINE'],['MISSIONS',`${quests.filter(q=>q.status==='active').length} active / ${quests.filter(q=>q.status==='complete').length} complete`],['LOG ENTRIES',logEntries.length],['INVENTORY',inventory.length+' items'],['BLACK BOX','INTEGRITY OK']].forEach(([k,v])=>tA(`<span class="t-dim">${k.padEnd(13)}: <span class="t-pc">${v}</span></span>`));},
+    missions:()=>quests.filter(q=>q.status==='active').forEach(q=>{const pct=q.subs.length?Math.round(q.subs.filter(s=>s.done).length/q.subs.length*100):0;tA(`<span class="t-ok">▶ ${esc(q.title)} [${pct}%]</span>`);}),
+    whoami:()=>tA(`<span class="t-dim">YoRHa No.2 Type B — Android Combat Unit — Serial: A2-100423</span>`),
+    date:()=>tA(`<span class="t-dim">${new Date().toISOString().replace('T',' ').slice(0,19)}</span>`),
+    clear:()=>{document.getElementById('terminal-output').innerHTML='';},
+    echo:()=>tA(`<span class="t-dim">${esc(args.join(' '))}</span>`),
+    glory:()=>{tA(`<span class="t-pc" style="letter-spacing:6px">GLORY TO MANKIND.</span>`);tA(`<span class="t-dim">ヨルハ部隊万歳</span>`);},
+  };
+  if(C[cmd])C[cmd]();else tA(`<span class="t-err">bash: ${esc(cmd)}: command not found. Type help for commands.</span>`);
+  tA('');
+}
+
+function updateSysClock(){
+  const n=new Date(),p=x=>String(x).padStart(2,'0');
+  const cl=document.getElementById('sys-clock');
+  const dt=document.getElementById('sys-date');
+  if(cl) cl.textContent=`${p(n.getHours())}:${p(n.getMinutes())}`;
+  if(dt) dt.textContent=`${n.getFullYear()}.${p(n.getMonth()+1)}.${p(n.getDate())}`;
+  const cpu=30+Math.round(Math.sin(Date.now()/8000)*12);
+  const mem=55+Math.round(Math.sin(Date.now()/12000)*8);
+  const hdd=88+Math.round(Math.sin(Date.now()/20000)*3);
+  ['cpu','mem','hdd'].forEach((k,i)=>{
+    const pct=[cpu,mem,hdd][i];
+    const el=document.getElementById('sys-'+k);
+    const bar=document.getElementById('sys-'+k+'-bar');
+    if(el) el.textContent=pct+'%';
+    if(bar) bar.style.width=pct+'%';
+  });
+  const cq=document.getElementById('sys-count-q');
+  const cl2=document.getElementById('sys-count-l');
+  const ci=document.getElementById('sys-count-i');
+  if(cq) cq.textContent=quests.length;
+  if(cl2) cl2.textContent=logEntries.length;
+  if(ci) ci.textContent=inventory.length;
+  const ms=document.getElementById('sys-mission-status');
+  const active=quests.filter(q=>q.status==='active').length;
+  if(ms) ms.textContent=active>0?`${active} DIRECTIVE${active>1?'S':''} ACTIVE`:'STANDBY';
+}
+setInterval(updateSysClock, 1000);
+
+function sysAuthMsg(msg, type='') {
+  const el=document.getElementById('sys-auth-msg');
+  if(!el) return;
+  el.textContent=msg; el.className='sys-status-msg '+(type||'');
+}
+
+function syncLog(msg, type='sl-inf') {
+  const log=document.getElementById('sync-log');
+  if(!log) return;
+  const n=new Date(),p=x=>String(x).padStart(2,'0');
+  const ts=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const s=document.createElement('span');
+  s.className=type; s.textContent=`[${ts}] ${msg}`;
+  log.appendChild(s); log.scrollTop=log.scrollHeight;
+}
+
+window.updateSystemPanel = function() {
+  const user = window._fbUser;
+  const loginSec  = document.getElementById('sys-login-section');
+  const sessSec   = document.getElementById('sys-session-section');
+  const dot       = document.getElementById('sys-login-dot');
+  const label     = document.getElementById('sys-login-label');
+  const unitEmail = document.getElementById('sys-unit-email');
+  const spAuth    = document.getElementById('sys-sp-auth');
+  const satInd    = document.getElementById('sys-sat-indicator');
+  const syncState = document.getElementById('sys-sync-state');
+  const linkSt    = document.getElementById('sys-link-status');
+
+  if (user) {
+    if(loginSec) loginSec.style.display='none';
+    if(sessSec)  sessSec.style.display='';
+    if(dot)   { dot.classList.add('active'); }
+    if(label)   label.textContent='AUTHENTICATED';
+    if(unitEmail) unitEmail.textContent=user.email;
+    if(spAuth)  spAuth.textContent='Ok';
+    if(satInd)  { satInd.textContent='ONLINE'; satInd.style.borderColor='var(--green)'; satInd.style.color='var(--green)'; }
+    if(syncState) syncState.textContent='BUNKER UPLINK ESTABLISHED';
+    if(linkSt)  linkSt.textContent='CONNECTED';
+  } else {
+    if(loginSec) loginSec.style.display='';
+    if(sessSec)  sessSec.style.display='none';
+    if(dot)   { dot.classList.remove('active'); }
+    if(label)   label.textContent='NOT AUTHENTICATED';
+    if(spAuth)  spAuth.textContent='—';
+    if(satInd)  { satInd.textContent='OFFLINE'; satInd.style.borderColor='var(--red)'; satInd.style.color='var(--red)'; }
+    if(syncState) syncState.textContent='LOCAL ONLY';
+    if(linkSt)  linkSt.textContent='OFFLINE';
+  }
+};
+
+async function sysLogin() {
+  const email    = document.getElementById('sys-email').value.trim();
+  const password = document.getElementById('sys-password').value;
+  if (!email || !password) { sysAuthMsg('Enter email and password.','err'); return; }
+  if (!window._fbAuth) { sysAuthMsg('Firebase not configured — paste your config into the HTML.','err'); return; }
+  sysAuthMsg('Authenticating...','working');
+  try {
+    await window._fbFns.signInWithEmailAndPassword(window._fbAuth, email, password);
+    sysAuthMsg('Authentication successful.','ok');
+    document.getElementById('sys-password').value='';
+  } catch(e) {
+    sysAuthMsg('Auth failed: '+e.message,'err');
+  }
+}
+
+async function sysRegister() {
+  const email    = document.getElementById('sys-email').value.trim();
+  const password = document.getElementById('sys-password').value;
+  if (!email || !password) { sysAuthMsg('Enter email and password.','err'); return; }
+  if (password.length < 6) { sysAuthMsg('Password must be at least 6 characters.','err'); return; }
+  if (!window._fbAuth) { sysAuthMsg('Firebase not configured.','err'); return; }
+  sysAuthMsg('Registering new unit...','working');
+  try {
+    await window._fbFns.createUserWithEmailAndPassword(window._fbAuth, email, password);
+    sysAuthMsg('Unit registered and authenticated.','ok');
+    document.getElementById('sys-password').value='';
+  } catch(e) {
+    sysAuthMsg('Registration failed: '+e.message,'err');
+  }
+}
+
+async function sysLogout() {
+  if (!window._fbAuth) return;
+  try {
+    await window._fbFns.signOut(window._fbAuth);
+    syncLog('Session terminated.','sl-inf');
+  } catch(e) {
+    syncLog('Sign out error: '+e.message,'sl-err');
+  }
+}
+
+async function sysSave() {
+  const user=window._fbUser;
+  if (!user) { syncLog('Not authenticated. Sign in first.','sl-err'); return; }
+  syncLog('Uploading data to Bunker...','sl-inf');
+  try {
+    const {doc, setDoc} = window._fbFns;
+    const db = window._fbDb;
+    const ref = doc(db, 'users', user.uid, 'data', 'snapshot');
+    await setDoc(ref, {
+      quests:     JSON.parse(JSON.stringify(quests)),
+      logEntries: JSON.parse(JSON.stringify(logEntries)),
+      inventory:  JSON.parse(JSON.stringify(inventory)),
+      savedAt:    new Date().toISOString(),
+      nqid, nlid, niid
     });
+    syncLog(`SAVE complete — ${quests.length} directives, ${logEntries.length} log entries, ${inventory.length} items.`,'sl-ok');
+  } catch(e) {
+    syncLog('SAVE failed: '+e.message,'sl-err');
+  }
+}
 
-    window.signup = async () => {
-        try {
-            await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
-        } catch(e) { alert(e.message); }
-    };
-
-    window.login = async () => {
-        try {
-            await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
-        } catch(e) { alert(e.message); }
-    };
-
-    window.logout = async () => await signOut(auth);
-
-    async function loadTasks() {
-        const user = auth.currentUser;
-        if (!user) return;
-        
-        const list = document.getElementById('task-list');
-        list.innerHTML = ''; 
-
-        const q = query(collection(db, "tasks"), where("userId", "==", user.uid));
-        
-        try {
-            const snapshot = await getDocs(q);
-            const tasks = [];
-            snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() }));
-            
-            tasks.sort((a, b) => {
-                const timeA = a.createdAt ? a.createdAt.seconds : 0;
-                const timeB = b.createdAt ? b.createdAt.seconds : 0;
-                return timeB - timeA; 
-            });
-
-            tasks.forEach(task => renderTask(task));
-            
-        } catch (e) {
-            console.error("Error loading tasks:", e);
-        }
+async function sysLoad() {
+  const user=window._fbUser;
+  if (!user) { syncLog('Not authenticated. Sign in first.','sl-err'); return; }
+  syncLog('Requesting data from Bunker...','sl-inf');
+  try {
+    const {doc, getDoc} = window._fbFns;
+    const db = window._fbDb;
+    const ref  = doc(db, 'users', user.uid, 'data', 'snapshot');
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      syncLog('No remote data found. Use SAVE to create a snapshot.','sl-inf');
+      return;
     }
+    const d = snap.data();
+    quests     = d.quests     || [];
+    logEntries = d.logEntries || [];
+    inventory  = d.inventory  || [];
+    nqid = d.nqid || (quests.length     ? Math.max(...quests.map(x=>x.id))     + 1 : 1);
+    nlid = d.nlid || (logEntries.length ? Math.max(...logEntries.map(x=>x.id)) + 1 : 1);
+    niid = d.niid || (inventory.length  ? Math.max(...inventory.map(x=>x.id))  + 1 : 1);
+    selQuest=null; selItem=null; selLog=null;
+    renderQuests(); renderLog(); renderItems(); updateQStats();
+    document.getElementById('quest-detail').innerHTML ='<div class="empty-state">Select a directive to view details</div>';
+    document.getElementById('log-detail').innerHTML   ='<div class="empty-state">Select a log entry to read</div>';
+    document.getElementById('item-detail').innerHTML  ='<div class="empty-state">Select an item to view</div>';
+    syncLog(`LOAD complete — ${quests.length} directives, ${logEntries.length} log entries, ${inventory.length} items. (Saved: ${d.savedAt||'unknown'})`, 'sl-ok');
+  } catch(e) {
+    syncLog('LOAD failed: '+e.message,'sl-err');
+  }
+}
 
-    function renderTask(data) {
-        const list = document.getElementById('task-list');
-        
-        const priority = data.priority || 0;
-        const done = !!data.done;
-        const priorityClass = priority === 2 ? 'p-high' : (priority === 1 ? 'p-med' : 'p-low');
-        const doneClass = done ? 'done' : '';
-
-        let dateStr = "";
-        if (data.createdAt) {
-            const date = new Date(data.createdAt.seconds * 1000);
-            dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + 
-                      ", " + 
-                      date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-        }
-
-        const encodedMessage = encodeURIComponent(data.message);
-        const safeDisplay = data.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-        const html = `
-            <div class="task-item" id="row-${data.id}" data-raw-message="${encodedMessage}">
-                <div class="priority-dot ${priorityClass}" onclick="cyclePriority('${data.id}', ${priority})"></div>
-                
-                <div class="task-text ${doneClass}" 
-                      id="text-${data.id}" 
-                      onclick="toggleDone('${data.id}', ${done})"
-                      ondblclick="startEdit('${data.id}')">
-                    ${safeDisplay}
-                </div>
-                
-                <span class="task-date">${dateStr}</span>
-
-                <i class="fa-solid fa-trash delete-btn" onclick="softDelete('${data.id}', ${priority}, ${done})"></i>
-            </div>
-        `;
-        list.innerHTML += html;
-    }
-
-    document.getElementById('task-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const input = document.getElementById('task-input');
-        const val = input.value.trim();
-        if (!val) return;
-
-        await addDoc(collection(db, "tasks"), {
-            message: val,
-            userId: auth.currentUser.uid,
-            createdAt: serverTimestamp(),
-            done: false,
-            priority: 0 
-        });
-        
-        input.value = '';
-        loadTasks();
-    });
-
-    window.toggleDone = async (id, currentStatus) => {
-        const text = document.getElementById(`text-${id}`);
-        if (!currentStatus) text.classList.add('done');
-        else text.classList.remove('done');
-        
-        text.setAttribute('onclick', `toggleDone('${id}', ${!currentStatus})`); 
-        await updateDoc(doc(db, "tasks", id), { done: !currentStatus });
-    };
-
-    window.cyclePriority = async (id, currentPriority) => {
-        let newPriority = (currentPriority + 1) % 3;
-        await updateDoc(doc(db, "tasks", id), { priority: newPriority });
-        loadTasks(); 
-    };
-
-    window.startEdit = (id) => {
-        const row = document.getElementById(`row-${id}`);
-        const oldText = decodeURIComponent(row.dataset.rawMessage);
-        const div = document.getElementById(`text-${id}`);
-        
-        const input = document.createElement('textarea');
-        input.value = oldText;
-        input.className = 'edit-input';
-        
-        const lineCount = oldText.split('\n').length;
-        input.style.height = (lineCount > 1 ? (lineCount * 1.5) + 'em' : '2.5em');
-
-        div.replaceWith(input);
-        input.focus();
-
-        const save = async () => {
-            const newVal = input.value.trim();
-            if (newVal && newVal !== oldText) {
-                await updateDoc(doc(db, "tasks", id), { message: newVal });
-            }
-            loadTasks(); 
-        };
-
-        input.addEventListener('blur', save);
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) { 
-                e.preventDefault(); 
-                input.blur(); 
-            }
-            if (e.key === 'Escape') loadTasks();
-        });
-    };
-
-    window.softDelete = async (id, priority, done) => {
-        const row = document.getElementById(`row-${id}`);
-        const message = decodeURIComponent(row.dataset.rawMessage);
-        
-        row.remove();
-        lastDeletedTask = { message, priority, done };
-        await deleteDoc(doc(db, "tasks", id));
-
-        const toast = document.getElementById('toast');
-        toast.classList.add('show');
-
-        if (undoTimeout) clearTimeout(undoTimeout);
-        undoTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-            lastDeletedTask = null;
-        }, 4000);
-    };
-
-    document.getElementById('undo-btn').addEventListener('click', async () => {
-        if (!lastDeletedTask) return;
-
-        await addDoc(collection(db, "tasks"), {
-            message: lastDeletedTask.message,
-            userId: auth.currentUser.uid,
-            priority: lastDeletedTask.priority,
-            done: lastDeletedTask.done,
-            createdAt: serverTimestamp()
-        });
-        
-        document.getElementById('toast').classList.remove('show');
-        loadTasks();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === '/') {
-            e.preventDefault();
-            document.getElementById('task-input').focus();
-        }
-        if (e.key === 'Escape') {
-            document.getElementById('task-input').value = '';
-            document.getElementById('task-input').blur();
-        }
-    });
+document.getElementById('sys-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') sysLogin();
+});
 </script>
 </body>
 </html>
